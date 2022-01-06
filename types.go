@@ -2,6 +2,11 @@ package main
 
 import "time"
 
+type bot struct {
+	tickers []ticker
+	interval time.Duration //defined in seconds
+}
+
 type ticker struct {
 	name            string
 	lastScrapeTime	time.Time

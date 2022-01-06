@@ -6,10 +6,6 @@ import (
 	twitterscraper "github.com/n0madic/twitter-scraper"
 )
 
-//twitter.go
-//context
-//twitterscraper
-//strings
 func twitterScrape(n string) []statement {
 	scraper := twitterscraper.New()
 	scraper.SetSearchMode(twitterscraper.SearchLatest)

@@ -5,12 +5,6 @@ import (
 	"time"
 )
 
-//bot.go
-//fmt, time
-type bot struct {
-	tickers  []ticker
-	interval time.Duration //defined in seconds
-}
 
 func initBot() bot {
 	var b bot
