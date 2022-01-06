@@ -29,38 +29,38 @@ The watch-dog project is my first for Go, so it is a learning project for me.
   
 ### ticker.go: Handles the business logic of the ticker type.
 
-computeHourlySentiment() float64
+```computeHourlySentiment() float64```
 
       Returns the average sentiment (defined as polarity) of all tweets currently stored for the specific ticker.
       
-pushToDb()
+```pushToDb()```
 
       Presently, this is a DynamoDb specific function. Makes calls to db.go to push the tweets of the specific ticker to your DynamoDb table.
   
-printTicker()
+```printTicker()```
       
       Primarily a debug function, but it prints out the name of the ticker, the number of tweets presently stored, the time of the last scrape, and all the tweets it currently has.
   
-importTickers() []ticker
+```importTickers() []ticker```
       
       Basic IO function that takes your chosen tickers from the "tickers.txt" file. Returns a slice of ticker objects, one for each stock/crypto ticker.
       
-scrapeAll(t \*[]ticker)
+```scrapeAll(t \*[]ticker)```
       
       Handles the slice of Tickers (imported by importTickers()), and calls the scrape receiver function for each ticker.
   
-scrape()
+```scrape()```
       
       Receiver function for individual ticker objects. Makes calls to twitter.go to scrape and store tweets in the tickers object.
       
 ### twitter.go: Handles the business logic of calling the twitterscraper package (github.com/n0madic/twitter-scraper).
   
-  twitterScraper(n string) []statement
+```twitterScraper(n string) []statement```
       
       Takes the name of the ticker (eg: SPY, TSLA, VOO, etc), and makes calls to the twitterscraper package to scrape the tweets. It then builds the statement object and returns it to the scrape() ticker receiver function.
       
 ### sentiment.go: Utilizes the sentiment package (github.com/cdipaolo/sentiment) to run sentiment analysis on the tweet it is passed.
   
-  polarity(tweet string) uint8
+```polarity(tweet string) uint8```
       
       Takes the tweet as a string, runs sentiment analysis, and returns the polarity (0: negative, 1: positive) representing the tweets sentiment on the ticker.
