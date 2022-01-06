@@ -14,7 +14,7 @@ type bot struct {
 
 func initBot() bot {
 	var b bot
-	b.interval = 10 * time.Second
+	b.interval = 3600 * time.Second
 	b.tickers = importTickers()
 	return b
 }
@@ -25,11 +25,14 @@ func (b bot) run() {
 	}
 	for {
 		fmt.Println("Loop")
-		scrape(&b.tickers)
+		scrapeAll(&b.tickers)
 		for i, _ := range b.tickers {
+			b.tickers[i].lastScrapeTime = time.Now()
 			b.tickers[i].printTicker()
-			b.tickers[i].computeHourlySentiment()
-			fmt.Println("Sentiment: ", "%f/n", b.tickers[i].hourlySentiment)
+			b.tickers[i].hourlySentiment = b.tickers[i].computeHourlySentiment()
+			//b.tickers[i].pushToDb()	
+			fmt.Printf("Sentiment: %f\n", float64(b.tickers[i].hourlySentiment))
+			//b.tickers[i].dump()
 		}
 		time.Sleep(b.interval)
 	}

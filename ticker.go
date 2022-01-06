@@ -5,21 +5,31 @@ import (
 	"os"
 	"log"
 	"bufio"
+	"time"
 )
 
-func (t ticker) computeHourlySentiment() {
+func (t ticker) computeHourlySentiment() float64 {
 	var total float64
 	for _, s := range t.tweets {
 		total += float64(s.polarity)
 	}
-	t.hourlySentiment = total / float64(t.numTweets)
+	return total / float64(t.numTweets)
+}
+
+func (t ticker) pushToDb() {
+	for _, tw:= range t.tweets {
+		fmt.Println("subject:",tw.subject)
+		fmt.Println("source:",tw.source)
+		dbPush(tw)
+	}
 }
 
 func (t ticker) printTicker() {
 	fmt.Println("Name: ", t.name)
 	fmt.Println("Number of Tweets", t.numTweets)
+	fmt.Println("Last Scrape",t.lastScrapeTime)
 	for _, tw := range t.tweets {
-		//fmt.Println("Tweet: ", tw.expression)
+		fmt.Printf("\nTimestamp: %s - Tweet: %s\n", time.Unix(tw.timeStamp,0).String(), tw.expression)
 		fmt.Println("Polarity: ", tw.polarity)
 	}
 }
@@ -43,9 +53,14 @@ func importTickers() []ticker {
 	return tick
 }
 
-func scrape(t *[]ticker) {
+func scrapeAll(t *[]ticker) {
 	for i, tick := range *t {
 		(*t)[i].tweets = append((*t)[i].tweets, twitterScrape(tick.name)...)
 		(*t)[i].numTweets = len((*t)[i].tweets)
 	}
+}
+
+func (t ticker) scrape () {
+	t.tweets = append(t.tweets, twitterScrape(t.name)...)
+	t.numTweets = len(t.tweets)
 }
