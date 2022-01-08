@@ -1,36 +1,41 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"log"
 	"bufio"
+	"fmt"
+	"log"
+	"os"
 	"time"
 )
 
-func (t ticker) computeHourlySentiment() float64 {
+func (t ticker) hourlyWipe() {
+	t.NumTweets = 0
+	t.Tweets = nil
+}
+
+func (t ticker) computeHourlySentiment() {
 	var total float64
-	for _, s := range t.tweets {
-		total += float64(s.polarity)
+	for _, s := range t.Tweets {
+		total += float64(s.Polarity)
 	}
-	return total / float64(t.numTweets)
+	t.HourlySentiment = total / float64(t.NumTweets)
 }
 
 func (t ticker) pushToDb() {
-	for _, tw:= range t.tweets {
-		fmt.Println("subject:",tw.subject)
-		fmt.Println("source:",tw.source)
+	for _, tw := range t.Tweets {
+		fmt.Println("subject:", tw.Subject)
+		fmt.Println("source:", tw.Source)
 		dbPush(tw)
 	}
 }
 
 func (t ticker) printTicker() {
-	fmt.Println("Name: ", t.name)
-	fmt.Println("Number of Tweets", t.numTweets)
-	fmt.Println("Last Scrape",t.lastScrapeTime)
-	for _, tw := range t.tweets {
-		fmt.Printf("\nTimestamp: %s - Tweet: %s\n", time.Unix(tw.timeStamp,0).String(), tw.expression)
-		fmt.Println("Polarity: ", tw.polarity)
+	fmt.Println("Name: ", t.Name)
+	fmt.Println("Number of Tweets", t.NumTweets)
+	fmt.Println("Last Scrape", t.LastScrapeTime)
+	for _, tw := range t.Tweets {
+		fmt.Printf("\nTimestamp: %s - Tweet: %s\n", time.Unix(tw.TimeStamp, 0).String(), tw.Expression)
+		fmt.Println("Polarity: ", tw.Polarity)
 	}
 }
 
@@ -44,7 +49,7 @@ func importTickers() []ticker {
 	scanner := bufio.NewScanner(file)
 	var tick []ticker
 	for scanner.Scan() {
-		stock := ticker{name: scanner.Text(), numTweets: 0}
+		stock := ticker{Name: scanner.Text(), NumTweets: 0}
 		tick = append(tick, stock)
 	}
 	if err := scanner.Err(); err != nil {
@@ -55,12 +60,12 @@ func importTickers() []ticker {
 
 func scrapeAll(t *[]ticker) {
 	for i, tick := range *t {
-		(*t)[i].tweets = append((*t)[i].tweets, twitterScrape(tick.name)...)
-		(*t)[i].numTweets = len((*t)[i].tweets)
+		(*t)[i].Tweets = append((*t)[i].Tweets, twitterScrape(tick)...)
+		(*t)[i].NumTweets = len((*t)[i].Tweets)
 	}
 }
 
-func (t ticker) scrape () {
-	t.tweets = append(t.tweets, twitterScrape(t.name)...)
-	t.numTweets = len(t.tweets)
+func (t ticker) scrape() {
+	t.Tweets = append(t.Tweets, twitterScrape(t)...)
+	t.NumTweets = len(t.Tweets)
 }
