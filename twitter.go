@@ -23,6 +23,7 @@ func twitterScrape(t ticker) []statement {
 				Subject:      t.Name,
 				Source:       "Twitter",
 				TimeStamp:    tweet.Timestamp,
+				TimeString:   time.Unix(tweet.Timestamp, 0).String(),
 				timeStampObj: time.Unix(tweet.Timestamp, 0),
 				Polarity:     polarity(tweet.Text),
 			}
