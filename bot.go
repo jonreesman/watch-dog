@@ -7,7 +7,7 @@ import (
 
 func initBot() bot {
 	var b bot
-	b.interval = 10 * time.Second
+	b.interval = 3600 * time.Second
 	b.tickers = importTickers()
 	return b
 }
@@ -23,7 +23,7 @@ func (b bot) run() {
 			b.tickers[i].LastScrapeTime = time.Now()
 			b.tickers[i].printTicker()
 			b.tickers[i].computeHourlySentiment()
-			//b.tickers[i].pushToDb()
+			b.tickers[i].pushToDb()
 			fmt.Printf("Sentiment: %f\n", float64(b.tickers[i].HourlySentiment))
 			b.tickers[i].dump_raw()
 			b.tickers[i].dump_text()

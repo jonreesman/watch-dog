@@ -25,7 +25,8 @@ func (t ticker) pushToDb() {
 	for _, tw := range t.Tweets {
 		fmt.Println("subject:", tw.Subject)
 		fmt.Println("source:", tw.Source)
-		dbPush(tw)
+
+		mdbPush(tw)
 	}
 }
 
