@@ -1,11 +1,13 @@
-package main
+package mdbDriver
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
 
 func TestDB(t *testing.T) {
+	fmt.Println("RUnning mongotestdb")
 	s := statement{
 		Expression: "This is a test",
 		Subject:    "SPY",

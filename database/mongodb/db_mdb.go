@@ -1,4 +1,4 @@
-package main
+package mdbDriver
 
 import (
 	"context"
@@ -10,6 +10,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+type statement struct {
+	Expression   string `json:"expression" dynamodbav:"expression" bson:"expression"`
+	Subject      string `json:"subject" dynamodbav:"subject" bson:"subject"`
+	Source       string `json:"source" dynamodbav:"source" bson:"source"`
+	TimeStamp    int64  `json:"timeStamp" dynamodbav:"timestamp" bson:"timestamp"`
+	TimeString   string `json:"timeString" dynamodbav:"timeString" bson:"timeString"`
+	Polarity     uint8  `json:"polarity" dynamodbav:"polarity" bson:"polarity"`
+	timeStampObj time.Time
+}
 
 func mdbPush(s statement) {
 	fmt.Println("URI IS", os.Getenv("DB_URI"))
