@@ -1,6 +1,8 @@
 package awsDriver
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -9,6 +11,16 @@ import (
 	"fmt"
 	"log"
 )
+
+type statement struct {
+	Expression   string `json:"expression" dynamodbav:"expression" bson:"expression"`
+	Subject      string `json:"subject" dynamodbav:"subject" bson:"subject"`
+	Source       string `json:"source" dynamodbav:"source" bson:"source"`
+	TimeStamp    int64  `json:"timeStamp" dynamodbav:"timestamp" bson:"timestamp"`
+	TimeString   string `json:"timeString" dynamodbav:"timeString" bson:"timeString"`
+	Polarity     uint8  `json:"polarity" dynamodbav:"polarity" bson:"polarity"`
+	timeStampObj time.Time
+}
 
 func awsPush(s statement) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{

@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
-	gcloud "watch-dog/database/google/gCloudDriver"
+
+	gcloud "watch-dog/databases/gclouddriver"
 )
 
 func initBot() bot {

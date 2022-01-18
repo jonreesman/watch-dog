@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"time"
-	gcloud "watch-dog/database/google/gCloudDriver"
+	gcloud "watch-dog/databases/gCloudDriver"
 )
 
 func (t ticker) hourlyWipe() {

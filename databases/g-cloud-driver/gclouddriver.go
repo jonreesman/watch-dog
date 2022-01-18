@@ -1,4 +1,4 @@
-package gCloudDriver
+package gclouddriver
 
 import (
 	"database/sql"
