@@ -8,13 +8,6 @@ type bot struct {
 }
 
 //Defines an object packaged for pushing to a database.
-type DBItem struct {
-	Expression string
-	Subject    string
-	Source     string
-	TimeStamp  int64
-	Polarity   uint8
-}
 type ticker struct {
 	Name            string      `json:"name"`
 	LastScrapeTime  time.Time   `json:"lastScrapeTime"`

@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"time"
-	gcloud "watch-dog/databases/gCloudDriver"
 )
 
 func (t ticker) hourlyWipe() {
@@ -22,11 +21,11 @@ func (t ticker) computeHourlySentiment() {
 	t.HourlySentiment = total / float64(t.NumTweets)
 }
 
-func (t ticker) pushToDb(d gcloud.DBManager) {
+func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
 		fmt.Println("subject:", tw.Subject)
 		fmt.Println("source:", tw.Source)
-		d.AddStatement(tw)
+		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity)
 	}
 }
 

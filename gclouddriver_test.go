@@ -1,4 +1,4 @@
-package gclouddriver
+package main
 
 import (
 	"fmt"
@@ -7,10 +7,10 @@ import (
 
 func TestInit(t *testing.T) {
 	var d DBManager
-	d.InitializeManager()
+	d.initializeManager()
 	fmt.Println("Initilialized")
-	d.CreateTickerTable()
+	d.createTickerTable()
 	fmt.Println("Ticker Table Created")
-	d.CreateStatementTable()
+	d.createStatementTable()
 	fmt.Println("Statement Table Created")
 }

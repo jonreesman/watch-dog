@@ -7,6 +7,7 @@ require (
 	github.com/cdipaolo/sentiment v0.0.0-20200617002423-c697f64e7f10
 	github.com/gin-contrib/static v0.0.1
 	github.com/gin-gonic/gin v1.7.7
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/n0madic/twitter-scraper v0.0.0-20211207081801-e9df7a49736e
 	go.mongodb.org/mongo-driver v1.8.2
 )

@@ -1,4 +1,4 @@
-package gclouddriver
+package main
 
 import (
 	"database/sql"
@@ -18,7 +18,7 @@ type DBManager struct {
 	URI                string
 }
 
-func (d *DBManager) InitializeManager() {
+func (d *DBManager) initializeManager() {
 	d.dbUser = os.Getenv("DB_USER")
 	d.dbPwd = os.Getenv("DB_PWD")
 	d.instanceConnection = os.Getenv("INSTANCE_CONNECTION_NAME")
@@ -40,28 +40,28 @@ func (d *DBManager) InitializeManager() {
 	fmt.Println("Connection established")
 }
 
-func (d DBManager) DropTable(s string) {
+func (d DBManager) dropTable(s string) {
 	_, err := d.db.Exec("DROP TABLE IF EXISTS " + s)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (d DBManager) CreateTickerTable() {
+func (d DBManager) createTickerTable() {
 	_, err := d.db.Exec("CREATE TABLE tickers(ticker_id SERIAL, name VARCHAR(255), num_tweets INTEGER, hourly_sentiment DOUBLE)")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (d DBManager) CreateStatementTable() {
+func (d DBManager) createStatementTable() {
 	_, err := d.db.Exec("CREATE TABLE statements(statement_id SERIAL, expression VARCHAR(255), time_stamp BIGINT, polarity TINYINT)")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (d DBManager) AddTicker(name string, numTweets int, hourlySentiment float64) {
+func (d DBManager) addTicker(name string, numTweets int, hourlySentiment float64) {
 	_, err := d.db.Query(fmt.Sprintf("INSERT INTO tickers(name, num_tweets, hourly_sentiment) VALUES ('%s', '%d', '%f')",
 		name,
 		numTweets,
@@ -72,7 +72,7 @@ func (d DBManager) AddTicker(name string, numTweets int, hourlySentiment float64
 	}
 }
 
-func (d DBManager) AddStatement(expression string, timeStamp int64, polarity uint8) {
+func (d DBManager) addStatement(expression string, timeStamp int64, polarity uint8) {
 
 	_, err := d.db.Query(fmt.Sprintf("INSERT INTO statements(expression, time_stamp, polarity) VALUES (\"%s\", '%d', '%d')",
 		expression,
@@ -97,7 +97,7 @@ func (d DBManager) AddStatement(expression string, timeStamp int64, polarity uin
 	}
 }*/
 
-func (d DBManager) RetrieveTickers() {
+func (d DBManager) retrieveTickers() {
 	rows, err := d.db.Query("SELECT ticker_id, name FROM tickers")
 	if err != nil {
 		log.Fatal(err)

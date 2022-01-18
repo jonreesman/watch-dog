@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"time"
-
-	gcloud "watch-dog/databases/gclouddriver"
 )
 
 func initBot() bot {
@@ -15,8 +13,8 @@ func initBot() bot {
 }
 
 func (b bot) run() {
-	var d gcloud.DBManager
-	d.InitializeManager()
+	var d DBManager
+	d.initializeManager()
 	if d.db == nil {
 		fmt.Println("Uh oh")
 	}
@@ -28,7 +26,7 @@ func (b bot) run() {
 	d.createStatementTable()
 	fmt.Println("Statement created")
 	for _, stock := range b.tickers {
-		d.addTicker(stock)
+		d.addTicker(stock.Name, stock.NumTweets, stock.HourlySentiment)
 		fmt.Println(stock)
 	}
 	d.retrieveTickers()
