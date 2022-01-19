@@ -8,11 +8,11 @@ This is a very early build, that presently can scrape twitter and provide a sent
 The watch-dog project is my first for Go, so it is a learning project for me.
 
 ## To Do:
-- [x] MongoDB Integration
+- [x] ~~~MongoDB Integration~~~ I have instead opted for Cloud SQL.
+- [x] Cloud SQL Integration
    - [x] Push integration
-   - [x] MongoDB Graphing
+   - [x] ~~~MongoDB Graphing~~~
    - [ ] Pull integration (Still exploring the value)
-- [ ] Incorporate Reddit scraping (I have yet to find an open source project I would like to use)
 - [ ] Incorporate relevant news scraping
 - [ ] Refactor in accordance with Go best practice 
 - [ ] Collect a large data set of tweets, reddit comments, news sources to use to more applicably train the present sentiment analysis model.

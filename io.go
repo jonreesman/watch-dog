@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -11,7 +10,6 @@ import (
 
 func (t ticker) dump_raw() {
 	p, err := json.MarshalIndent(t, "", "	")
-	fmt.Println(p)
 	if err != nil {
 		log.Panicf("Error dumping %s\n", err)
 	}

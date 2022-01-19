@@ -13,23 +13,21 @@ func initBot() bot {
 }
 
 func (b bot) run() {
-	var d DBManager
+
+	//MySQL DB Set Up
+	/*var d DBManager
 	d.initializeManager()
-	if d.db == nil {
-		fmt.Println("Uh oh")
-	}
 	d.dropTable("tickers")
 	d.dropTable("statements")
-	fmt.Println("Creating ticker table")
 	d.createTickerTable()
-	fmt.Println("Creating stmt table")
 	d.createStatementTable()
-	fmt.Println("Statement created")
 	for _, stock := range b.tickers {
 		d.addTicker(stock.Name, stock.NumTweets, stock.HourlySentiment)
 		fmt.Println(stock)
 	}
-	d.retrieveTickers()
+	d.retrieveTickers()*/
+
+	//Main business logic loop of Bot object.
 	for {
 		fmt.Println("Loop")
 		scrapeAll(&b.tickers)
@@ -37,10 +35,14 @@ func (b bot) run() {
 			b.tickers[i].LastScrapeTime = time.Now()
 			b.tickers[i].printTicker()
 			b.tickers[i].computeHourlySentiment()
-			b.tickers[i].pushToDb(d)
-			fmt.Printf("Sentiment: %f\n", float64(b.tickers[i].HourlySentiment))
+			//b.tickers[i].pushToDb(d)
+
+			//
 			b.tickers[i].dump_raw()
 			b.tickers[i].dump_text()
+
+			//We do not keep the tweets cached hour to hour,
+			//so we wipe them since they are accesible in the database.
 			b.tickers[i].hourlyWipe()
 		}
 		time.Sleep(b.interval)

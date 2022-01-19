@@ -58,6 +58,10 @@ func importTickers() []ticker {
 	return tick
 }
 
+func addTicker(s string) {
+	//Logic for adding ticker via REST API
+}
+
 func scrapeAll(t *[]ticker) {
 	for i, tick := range *t {
 		(*t)[i].Tweets = append((*t)[i].Tweets, twitterScrape(tick)...)
