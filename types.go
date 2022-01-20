@@ -24,3 +24,10 @@ type statement struct {
 	Polarity     uint8  `json:"polarity" dynamodbav:"polarity" bson:"polarity"`
 	timeStampObj time.Time
 }
+
+type intervalQuote struct {
+	TimeStamp    int64
+	TimeString   string
+	timeObj      time.Time
+	currentPrice float64
+}
