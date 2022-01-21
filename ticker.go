@@ -50,7 +50,9 @@ func importTickers() []ticker {
 	var tick []ticker
 	for scanner.Scan() {
 		stock := ticker{Name: scanner.Text(), NumTweets: 0}
-		tick = append(tick, stock)
+		if CheckTickerExists(stock.Name) {
+			tick = append(tick, stock)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
@@ -58,8 +60,16 @@ func importTickers() []ticker {
 	return tick
 }
 
-func addTicker(s string) {
-	//Logic for adding ticker via REST API
+func addTicker(s string) ticker {
+	if !CheckTickerExists(s) {
+		log.Println("Stock", s, "does not exist.")
+	}
+	t := ticker{
+		Name: s,
+	}
+	t.scrape()
+	return t
+
 }
 
 func scrapeAll(t *[]ticker) {
@@ -69,7 +79,7 @@ func scrapeAll(t *[]ticker) {
 	}
 }
 
-func (t ticker) scrape() {
-	t.Tweets = append(t.Tweets, twitterScrape(t)...)
+func (t *ticker) scrape() {
+	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
 	t.NumTweets = len(t.Tweets)
 }

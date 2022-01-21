@@ -61,6 +61,20 @@ func (d DBManager) createStatementTable() {
 	}
 }
 
+func (d DBManager) createSentimentTable() {
+	_, err := d.db.Exec("CREATE TABLE senitments(time_stamp BIGINT, ticker_id INT, hourly_sentiment DOUBLE)")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (d DBManager) createQuotesTable() {
+	_, err := d.db.Exec("CREATE TABLE quotes(time_stamp BIGINT, ticker_id INT, price DOUBLE)")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func (d DBManager) addTicker(name string, numTweets int, hourlySentiment float64) {
 	_, err := d.db.Query(fmt.Sprintf("INSERT INTO tickers(name, num_tweets, hourly_sentiment) VALUES ('%s', '%d', '%f')",
 		name,

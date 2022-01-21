@@ -2,18 +2,34 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 )
 
 func initBot() bot {
 	var b bot
-	b.interval = 3600 * time.Second
+	b.DEBUG, _ = strconv.ParseBool(os.Getenv("DEBUG"))
+	b.mainInterval = 3600 * time.Second
+	b.quoteInterval = 300 * time.Second
 	b.tickers = importTickers()
 	return b
 }
 
-func (b bot) run() {
+func (b *bot) grabQuotes() {
+	for {
+		for i := range b.tickers {
+			b.tickers[i].Quotes = append(b.tickers[i].Quotes, FiveMinutePriceCheck(b.tickers[i].Name))
+			if b.DEBUG {
+				fmt.Println(b.tickers[i].Name, ":", b.tickers[i].Quotes[len(b.tickers[i].Quotes)-1])
+			}
+		}
+		time.Sleep(b.quoteInterval)
+	}
+}
 
+func (b bot) run() {
+	go b.grabQuotes()
 	//MySQL DB Set Up
 	/*var d DBManager
 	d.initializeManager()
@@ -21,6 +37,8 @@ func (b bot) run() {
 	d.dropTable("statements")
 	d.createTickerTable()
 	d.createStatementTable()
+	d.createQuotesTable()
+	d.createSentimentTable()
 	for _, stock := range b.tickers {
 		d.addTicker(stock.Name, stock.NumTweets, stock.HourlySentiment)
 		fmt.Println(stock)
@@ -45,6 +63,6 @@ func (b bot) run() {
 			//so we wipe them since they are accesible in the database.
 			b.tickers[i].hourlyWipe()
 		}
-		time.Sleep(b.interval)
+		time.Sleep(b.mainInterval)
 	}
 }

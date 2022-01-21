@@ -1,22 +1,27 @@
 [![Go](https://github.com/jonreesman/watch-dog/actions/workflows/go.yml/badge.svg)](https://github.com/jonreesman/watch-dog/actions/workflows/go.yml)
 [![CodeFactor](https://www.codefactor.io/repository/github/jonreesman/watch-dog/badge)](https://www.codefactor.io/repository/github/jonreesman/watch-dog)
 # watch-dog
-The purpose of this project is to scrape twitter, reddit, and various news sources on an hourly basis in order to provide the user with a regular sentiment analysis for their chosen stock/crypto tickers.
+The purpose of this project is to scrape twitter, reddit, and various news sources on an hourly basis in order to provide the user with a regular sentiment analysis for their chosen stock/crypto tickers. It will feature a frontend, built with React, that will chart stock prices vs their hourly sentiment on Twitter. As new stocks/cryptos are added, they will be cached in the database to reduce the API calls to Twitter. As the program detects headlines that are considered popular for a given stock/crypto (eg, elevated volume of retweeting the article), it will incorporate these headlines into the graph as well.
 
-This is a very early build, that presently can scrape twitter and provide a sentiment from its extracted tweets and print it to stdout. It does have the capability to push to an AWS DynamoDB, however my additions to my DYnamoDB table are throttled, so I am in the progress of swithcing to a local MongoDB table. I have a lengthy to-do list, and the actual structure of the project is a WIP as I am still learning Go best practices.
+While I do not believe this project will give the user a leg up in terms of day-trading, I do think it possesses value as a market research tool. Some stocks and crypto have a low volume of tweets, making it difficult to glean any time-sensitive, useful data. But being able to graph sentiment over time and correlate it with the price has been a large desire of mine, because I do think there is value there.
 
-The watch-dog project is my first for Go, so it is a learning project for me.
+This is a very early build, that presently can scrape twitter and provide a sentiment from its extracted tweets and print it to stdout. I have experimented with multiple different databases (DynamoDB, MongoDB) but have ultimately settled on MySQL via Google Cloud.
+
+The watch-dog project is my first for Go, so it is a learning curve for me.
 
 ## To Do:
-- [x] ~~~MongoDB Integration~~~ I have instead opted for Cloud SQL.
 - [x] Cloud SQL Integration
+   - [x] Input sanitation
    - [x] Push integration
-   - [x] ~~~MongoDB Graphing~~~
-   - [ ] Pull integration (Still exploring the value)
-- [ ] Incorporate relevant news scraping
+   - [ ] Pull integration
+- [x] Collect a large data set of tweets, reddit comments, news sources to use to more applicably train the present sentiment analysis model.
 - [ ] Refactor in accordance with Go best practice 
-- [ ] Collect a large data set of tweets, reddit comments, news sources to use to more applicably train the present sentiment analysis model.
-- [ ] Implement a Web UI or form of notification system
+- [ ] Implement a Web UI (REACT)
+- [ ] Incorporate relevant news scraping
+
+## No longer utilizing
+- [x] MongoDB Integration
+      -[x] MongoDB Graphing
 
 ## Structure
 
