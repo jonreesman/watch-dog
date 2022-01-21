@@ -74,3 +74,7 @@ The watch-dog project is my first for Go, so it is a learning curve for me.
 ```polarity(tweet string) uint8```
       
       Takes the tweet as a string, runs sentiment analysis, and returns the polarity (0: negative, 1: positive) representing the tweets sentiment on the ticker.
+
+
+# Database Scheme
+![Screenshot](DB_Scheme.png)
