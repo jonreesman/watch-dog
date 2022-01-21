@@ -79,4 +79,4 @@ The watch-dog project is my first for Go, so it is a learning curve for me.
 ## Database Scheme
 Below is the proposed Database Scheme being employed in MySQL.
 
-![Screenshot](DB_Scheme.png)
+![Screenshot](readme_resources/DB_Scheme.png)
