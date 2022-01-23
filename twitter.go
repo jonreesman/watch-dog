@@ -56,5 +56,6 @@ func sanitize(s string) string {
 		s += " " + emoji.Slug + " "
 	}
 	s = strings.ReplaceAll(s, "\"", "'")
+	s = strings.ReplaceAll(s, ";", "semi-colon")
 	return s
 }
