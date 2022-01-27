@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-func (t ticker) hourlyWipe() {
+func (t *ticker) hourlyWipe() {
 	t.NumTweets = 0
 	t.Tweets = nil
 }
 
-func (t ticker) computeHourlySentiment() {
+func (t *ticker) computeHourlySentiment() {
 	var total float64
 	for _, s := range t.Tweets {
 		total += float64(s.Polarity)
@@ -23,11 +23,12 @@ func (t ticker) computeHourlySentiment() {
 
 func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
-		fmt.Println("subject:", tw.Subject)
-		fmt.Println("source:", tw.Source)
-		fmt.Println("Tweet length: ", len(tw.Expression))
-		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity)
+		//fmt.Println("subject:", tw.Subject)
+		//fmt.Println("source:", tw.Source)
+		//fmt.Println("Tweet length: ", len(tw.Expression))
+		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
 	}
+	d.addSentiment(t.LastScrapeTime.Unix(), t.id, t.HourlySentiment)
 }
 
 func (t ticker) printTicker() {
@@ -36,6 +37,7 @@ func (t ticker) printTicker() {
 	fmt.Println("Last Scrape", t.LastScrapeTime)
 	for _, tw := range t.Tweets {
 		fmt.Printf("\nTimestamp: %s - Tweet: %s\n", time.Unix(tw.TimeStamp, 0).String(), tw.Expression)
+		fmt.Println(tw.PermanentURL)
 		fmt.Println("Polarity: ", tw.Polarity)
 	}
 }
@@ -61,14 +63,17 @@ func importTickers() []ticker {
 	return tick
 }
 
-func addTicker(s string) ticker {
+func addTicker(s string, d DBManager) ticker {
 	if !CheckTickerExists(s) {
 		log.Println("Stock", s, "does not exist.")
 	}
 	t := ticker{
 		Name: s,
 	}
+	t.id = d.addTicker(t.Name)
 	t.scrape()
+	t.computeHourlySentiment()
+	t.pushToDb(d)
 	return t
 
 }

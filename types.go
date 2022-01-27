@@ -27,6 +27,8 @@ type statement struct {
 	TimeString   string `json:"timeString" dynamodbav:"timeString" bson:"timeString"`
 	Polarity     uint8  `json:"polarity" dynamodbav:"polarity" bson:"polarity"`
 	timeStampObj time.Time
+	URLs         []string
+	PermanentURL string
 }
 
 type intervalQuote struct {

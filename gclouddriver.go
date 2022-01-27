@@ -53,14 +53,14 @@ func (d DBManager) dropTable(s string) {
 }
 
 func (d DBManager) createTickerTable() {
-	_, err := d.db.Exec("CREATE TABLE tickers(ticker_id SERIAL PRIMARY KEY, name VARCHAR(255), num_tweets INTEGER, hourly_sentiment DOUBLE)")
+	_, err := d.db.Exec("CREATE TABLE tickers(ticker_id SERIAL PRIMARY KEY, name VARCHAR(255))")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func (d DBManager) createStatementTable() {
-	_, err := d.db.Exec("CREATE TABLE statements(statement_id SERIAL PRIMARY KEY, ticker_id BIGINT UNSIGNED, expression VARCHAR(500), time_stamp BIGINT, polarity TINYINT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id))")
+	_, err := d.db.Exec("CREATE TABLE statements(statement_id SERIAL PRIMARY KEY, ticker_id BIGINT UNSIGNED, expression VARCHAR(500), url VARCHAR(255), time_stamp BIGINT, polarity TINYINT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id))")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func (d DBManager) addQuote(time_stamp int64, id int, price float64) {
 }
 
 func (d DBManager) addSentiment(time_stamp int64, id int, hourly_sentiment float64) {
-	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO tickers(time_stamp, ticker_id, hourly_sentiment) VALUES ('%d', '%d', '%f')",
+	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO sentiments(time_stamp, ticker_id, hourly_sentiment) VALUES ('%d', '%d', '%f')",
 		time_stamp,
 		id,
 		hourly_sentiment,
@@ -102,11 +102,9 @@ func (d DBManager) addSentiment(time_stamp int64, id int, hourly_sentiment float
 	}
 }
 
-func (d DBManager) addTicker(name string, numTweets int, hourlySentiment float64) int {
-	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO tickers(name, num_tweets, hourly_sentiment) VALUES ('%s', '%d', '%f')",
+func (d DBManager) addTicker(name string) int {
+	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO tickers(name) VALUES ('%s')",
 		name,
-		numTweets,
-		hourlySentiment,
 	))
 	if err != nil {
 		log.Print("Error in AddTicker()", err)
@@ -114,12 +112,13 @@ func (d DBManager) addTicker(name string, numTweets int, hourlySentiment float64
 	return d.retrieveTicker(name)
 }
 
-func (d DBManager) addStatement(expression string, timeStamp int64, polarity uint8) {
+func (d DBManager) addStatement(expression string, timeStamp int64, polarity uint8, url string) {
 
-	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO statements(expression, time_stamp, polarity) VALUES (\"%s\", '%d', '%d')",
+	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO statements(expression, time_stamp, polarity, url) VALUES (\"%s\", '%d', '%d', \"%s\")",
 		expression,
 		timeStamp,
 		polarity,
+		url,
 	))
 	if err != nil {
 		log.Print("Error in addStatement", err)
@@ -180,4 +179,49 @@ func (d DBManager) retrieveTicker(tickerName string) int {
 		}
 	}
 	return 0
+}
+
+func (d DBManager) returnQuoteHistory(id int) {
+	rows, err := d.db.Query(fmt.Sprintf("SELECT time_stamp, price FROM quotes WHERE ticker_id=%d ORDER BY time_stamp", id))
+	if err != nil {
+		log.Print("Error returning Quote History: ", err)
+	}
+	//fmt.Print(rows)
+	var iq []intervalQuote
+	var q intervalQuote
+	for rows.Next() {
+		if rows.Err() != nil {
+			log.Print("Found no rows.")
+		}
+		err := rows.Scan(&q.TimeStamp, &q.currentPrice)
+		iq = append(iq, q)
+		if err != nil {
+			log.Print("Error in row scan")
+		}
+	}
+}
+
+func (d DBManager) returnSentimentHistory(id int) {
+	rows, err := d.db.Query(fmt.Sprintf("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=%d ORDER BY time_stamp", id))
+	if err != nil {
+		log.Print("Error returning senitment history: ", err)
+	}
+
+	var sh []intervalQuote
+	var s intervalQuote
+
+	for rows.Next() {
+		if rows.Err() != nil {
+			log.Print("Found no rows.")
+		}
+		err := rows.Scan(&s.TimeStamp, &s.currentPrice)
+		sh = append(sh, s)
+		if err != nil {
+			log.Print("Error in row scan")
+		}
+	}
+
+	for i, s := range sh {
+		fmt.Println(i, s)
+	}
 }

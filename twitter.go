@@ -15,14 +15,12 @@ func twitterScrape(t ticker) []statement {
 	scraper.SetSearchMode(twitterscraper.SearchLatest)
 	scraper.WithReplies(false)
 	var tweets []statement
-	//for tweet := range scraper.SearchTweets(context.Background(), t.name+"-filter:retweets since_time:"+strconv.FormatInt(t.lastScrapeTime.Local().Unix(), 10), 50) {
 	for tweet := range scraper.SearchTweets(context.Background(), t.Name+" within_time:1h", 50) {
 		if tweet.Error != nil {
 			return tweets
-			//panic(tweet.Error)
 		}
 		tweet.Text = sanitize(tweet.Text)
-		if strings.Contains(tweet.Text, t.Name) { //&& (tweet.Timestamp >= (time.Now().Unix() - 3600)) {
+		if strings.Contains(tweet.Text, t.Name) {
 			s := statement{
 				Expression:   tweet.Text,
 				Subject:      t.Name,
@@ -31,6 +29,8 @@ func twitterScrape(t ticker) []statement {
 				TimeString:   time.Unix(tweet.Timestamp, 0).String(),
 				timeStampObj: time.Unix(tweet.Timestamp, 0),
 				Polarity:     polarity(tweet.Text),
+				URLs:         tweet.URLs,
+				PermanentURL: tweet.PermanentURL,
 			}
 			tweets = append(tweets, s)
 		}
