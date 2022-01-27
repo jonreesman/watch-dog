@@ -25,6 +25,7 @@ func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
 		fmt.Println("subject:", tw.Subject)
 		fmt.Println("source:", tw.Source)
+		fmt.Println("Tweet length: ", len(tw.Expression))
 		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity)
 	}
 }

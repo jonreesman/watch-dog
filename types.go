@@ -17,6 +17,7 @@ type ticker struct {
 	Tweets          []statement `json:"tweets"`
 	HourlySentiment float64     `json:"hourlySentiment"`
 	Quotes          []intervalQuote
+	id              int
 }
 type statement struct {
 	Expression   string `json:"expression" dynamodbav:"expression" bson:"expression"`
