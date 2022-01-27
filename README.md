@@ -13,7 +13,7 @@ The watch-dog project is my first for Go, so it is a learning curve for me.
 - [x] Cloud SQL Integration
    - [x] Input sanitation
    - [x] Push integration
-   - [ ] Pull integration
+   - [x] Pull integration
 - [x] Collect a large data set of tweets, reddit comments, news sources to use to more applicably train the present sentiment analysis model.
 - [ ] Refactor in accordance with Go best practice 
 - [ ] Implement a Web UI (REACT)
