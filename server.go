@@ -1,9 +1,11 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strconv"
+
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +41,7 @@ func (s *Server) startServer(db *DBManager, ti *[]ticker) {
 		api.GET("/tickers", s.returnTickers)
 		api.POST("/tickers/", s.newTicker)
 		api.GET("/tickers/:id/time/:interval", s.returnTicker)
+		api.DELETE("/tickers/:id", s.removeTicker)
 
 	}
 	//api.GET("/tickers", tickerHandler)
@@ -134,6 +137,20 @@ func (s Server) returnTicker(c *gin.Context) {
 
 }
 
-func (s Server) getTickerSentimentTimeline(c *gin.Context) {
-
+func (s Server) removeTicker(c *gin.Context) {
+	var (
+		id  int
+		err error
+	)
+	if id, err = strconv.Atoi(c.Param("id")); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id."})
+		return
+	}
+	err = s.d.deleteTicker(id)
+	if err != nil {
+		log.Print(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	} else {
+		c.JSON(http.StatusAccepted, gin.H{"error": "none"})
+	}
 }
