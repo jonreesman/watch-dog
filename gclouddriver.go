@@ -125,9 +125,15 @@ func (d DBManager) addSentiment(time_stamp int64, id int, hourly_sentiment float
 }
 
 func (d DBManager) addTicker(name string) (int, error) {
-	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO tickers(name) VALUES ('%s')",
+	dbQuery, err := d.db.Prepare("INSERT INTO tickers(name) VALUES (?)")
+	if err != nil {
+		log.Print("Error in AddTicker()", err)
+		return 0, errors.New("failed to add ticker")
+	}
+	_, err = dbQuery.Query(name)
+	/*_, err := d.db.Exec(fmt.Sprintf("INSERT INTO tickers(name) VALUES ('%s')",
 		name,
-	))
+	))*/
 	if err != nil {
 		log.Print("Error in AddTicker()", err)
 		return 0, errors.New("failed to add ticker")
