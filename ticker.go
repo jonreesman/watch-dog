@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/cdipaolo/sentiment"
 )
 
 func (t *ticker) hourlyWipe() {
@@ -14,9 +16,23 @@ func (t *ticker) hourlyWipe() {
 	t.Tweets = nil
 }
 
-func (t *ticker) computeHourlySentiment() {
+func (t *ticker) computeHourlySentiment(sentimentModel sentiment.Models) {
 	var total float64
 	for _, s := range t.Tweets {
+		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
+		total += float64(s.Polarity)
+	}
+	t.HourlySentiment = total / float64(t.NumTweets)
+}
+
+func (t *ticker) singleComputeHourlySentiment() {
+	sentimentModel, err := sentiment.Restore()
+	if err != nil {
+		log.Print("Error loading sentiment analysis model")
+	}
+	var total float64
+	for _, s := range t.Tweets {
+		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
 		total += float64(s.Polarity)
 	}
 	t.HourlySentiment = total / float64(t.NumTweets)
@@ -24,7 +40,7 @@ func (t *ticker) computeHourlySentiment() {
 
 func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
-		fmt.Println("added statement to DB for:", tw.Subject)
+		//fmt.Println("added statement to DB for:", tw.Subject)
 		//fmt.Println("source:", tw.Source)
 		//fmt.Println("Tweet length: ", len(tw.Expression))
 		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
@@ -43,7 +59,19 @@ func (t ticker) printTicker() {
 	}
 }
 
-func importTickers() []ticker {
+func importTickers(d DBManager) []ticker {
+	var tickers []ticker
+	existingTickers := d.retrieveTickers()
+	for i, name := range existingTickers {
+		if name == "" {
+			continue
+		}
+		tickers = append(tickers, ticker{Name: name, id: i})
+		fmt.Printf("Added ticker %s with id %d", name, i)
+	}
+	if len(tickers) != 0 {
+		return tickers
+	}
 	file, err := os.Open("tickers.txt")
 	if err != nil {
 		log.Panicf("faild reading data from file: %s", err)
@@ -51,32 +79,36 @@ func importTickers() []ticker {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	var tick []ticker
 	for scanner.Scan() {
-		stock := ticker{Name: scanner.Text(), NumTweets: 0}
-		if CheckTickerExists(stock.Name) {
-			tick = append(tick, stock)
+		tick := ticker{Name: scanner.Text(), NumTweets: 0}
+		if CheckTickerExists(tick.Name) {
+			tick.id, _ = d.addTicker(tick.Name)
+			tickers = append(tickers, tick)
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-	return tick
+	return tickers
 }
 
 func addTicker(s string, d DBManager) (ticker, error) {
 	if !CheckTickerExists(s) {
 		log.Println("Stock", s, "does not exist.")
 
-		return ticker{Name: "none"}, errors.New("Stock/crypto does not exist.")
+		return ticker{Name: "none"}, errors.New("stock/crypto does not exist")
 	}
 	t := ticker{
 		Name: s,
 	}
-	t.id = d.addTicker(t.Name)
+	var err error
+	t.id, err = d.addTicker(t.Name)
+	if err != nil {
+		return ticker{Name: "none"}, err
+	}
 	t.scrape()
 	t.LastScrapeTime = time.Now()
-	t.computeHourlySentiment()
+	t.singleComputeHourlySentiment()
 	t.pushToDb(d)
 	return t, nil
 

@@ -5,6 +5,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	sentiment "github.com/cdipaolo/sentiment"
 )
 
 func initBot() bot {
@@ -12,7 +14,6 @@ func initBot() bot {
 	b.DEBUG, _ = strconv.ParseBool(os.Getenv("DEBUG"))
 	b.mainInterval = 3600 * time.Second
 	b.quoteInterval = 300 * time.Second
-	b.tickers = importTickers()
 	return b
 }
 
@@ -22,7 +23,7 @@ func (b *bot) grabQuotes(d DBManager) { //const d *DBManager
 			j := FiveMinutePriceCheck(b.tickers[i].Name)
 			b.tickers[i].Quotes = append(b.tickers[i].Quotes, j)
 			if b.DEBUG {
-				fmt.Println(b.tickers[i].Name, ":", j)
+				fmt.Println(b.tickers[i].Name, ":", j, "id:", b.tickers[i].id)
 			}
 			d.addQuote(j.TimeStamp, b.tickers[i].id, j.CurrentPrice)
 		}
@@ -34,49 +35,34 @@ func (b bot) run() {
 	//MySQL DB Set Up
 	var d DBManager
 	d.initializeManager()
-	d.dropTable("tickers")
-	d.dropTable("statements")
-	d.dropTable("quotes")
-	d.dropTable("sentiments")
-	d.createTickerTable()
-	d.createStatementTable()
-	d.createQuotesTable()
-	d.createSentimentTable()
-	for i, stock := range b.tickers {
-		b.tickers[i].id = d.addTicker(stock.Name)
-		fmt.Println(stock)
-	}
-	d.retrieveTickers()
+	b.tickers = importTickers(d)
 
 	var s Server
 	go s.startServer(&d, &b.tickers)
 
 	go b.grabQuotes(d)
+	sentimentModel, err := sentiment.Restore()
+	if err != nil {
+		panic(err)
+	}
 	//Main business logic loop of Bot object.
 	for {
-		fmt.Println("Loop")
+		if b.DEBUG {
+			fmt.Println("Loop")
+		}
 		scrapeAll(&b.tickers)
 		for i := range b.tickers {
+			if i == 0 {
+				continue
+			}
 			b.tickers[i].LastScrapeTime = time.Now()
-			//b.tickers[i].printTicker()
-			b.tickers[i].computeHourlySentiment()
+			b.tickers[i].computeHourlySentiment(sentimentModel)
 			b.tickers[i].pushToDb(d)
-
-			b.tickers[i].dump_raw()
-			b.tickers[i].dump_text()
 
 			//We do not keep the tweets cached hour to hour,
 			//so we wipe them since they are accesible in the database.
 			b.tickers[i].hourlyWipe()
 		}
-
-		/*The below comments are used to unit test some API functions
-		 *that are in the process of being implemented
-		 */
-		//d.returnQuoteHistory(b.tickers[0].id)
-		//d.returnSentimentHistory(b.tickers[0].id)
-		//b.tickers = append(b.tickers, addTicker("ETHE", d))
-
 		time.Sleep(b.mainInterval)
 	}
 }

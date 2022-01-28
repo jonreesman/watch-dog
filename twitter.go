@@ -28,7 +28,7 @@ func twitterScrape(t ticker) []statement {
 				TimeStamp:    tweet.Timestamp,
 				TimeString:   time.Unix(tweet.Timestamp, 0).String(),
 				timeStampObj: time.Unix(tweet.Timestamp, 0),
-				Polarity:     polarity(tweet.Text),
+				Polarity:     0,
 				URLs:         tweet.URLs,
 				PermanentURL: tweet.PermanentURL,
 			}

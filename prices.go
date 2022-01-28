@@ -14,7 +14,6 @@ func FiveMinutePriceCheck(ticker string) intervalQuote {
 	if err != nil {
 		log.Panic(err)
 	}
-	//fmt.Println(q)
 	var iq intervalQuote
 	iq.timeObj = time.Now()
 	iq.TimeStamp = iq.timeObj.Unix()
