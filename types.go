@@ -11,11 +11,11 @@ type bot struct {
 
 //Defines an object packaged for pushing to a database.
 type ticker struct {
-	Name            string      `json:"name"`
-	LastScrapeTime  time.Time   `json:"lastScrapeTime"`
-	NumTweets       int         `json:"numTweets"`
+	Name            string `json:"name"`
+	LastScrapeTime  time.Time
+	NumTweets       int
 	Tweets          []statement `json:"tweets"`
-	HourlySentiment float64     `json:"hourlySentiment"`
+	HourlySentiment float64
 	Quotes          []intervalQuote
 	id              int
 }
@@ -35,5 +35,5 @@ type intervalQuote struct {
 	TimeStamp    int64
 	TimeString   string
 	timeObj      time.Time
-	currentPrice float64
+	CurrentPrice float64
 }

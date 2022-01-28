@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -23,7 +24,7 @@ func (t *ticker) computeHourlySentiment() {
 
 func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
-		//fmt.Println("subject:", tw.Subject)
+		fmt.Println("added statement to DB for:", tw.Subject)
 		//fmt.Println("source:", tw.Source)
 		//fmt.Println("Tweet length: ", len(tw.Expression))
 		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
@@ -63,18 +64,21 @@ func importTickers() []ticker {
 	return tick
 }
 
-func addTicker(s string, d DBManager) ticker {
+func addTicker(s string, d DBManager) (ticker, error) {
 	if !CheckTickerExists(s) {
 		log.Println("Stock", s, "does not exist.")
+
+		return ticker{Name: "none"}, errors.New("Stock/crypto does not exist.")
 	}
 	t := ticker{
 		Name: s,
 	}
 	t.id = d.addTicker(t.Name)
 	t.scrape()
+	t.LastScrapeTime = time.Now()
 	t.computeHourlySentiment()
 	t.pushToDb(d)
-	return t
+	return t, nil
 
 }
 

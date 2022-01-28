@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -67,7 +68,7 @@ func (d DBManager) createStatementTable() {
 }
 
 func (d DBManager) createSentimentTable() {
-	_, err := d.db.Exec("CREATE TABLE sentiments(sentiment_id SERIAL PRIMARY KEY, time_stamp BIGINT, ticker_id BIGINT UNSIGNED, hourly_sentiment DOUBLE, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id))")
+	_, err := d.db.Exec("CREATE TABLE sentiments(sentiment_id SERIAL PRIMARY KEY, time_stamp BIGINT, ticker_id BIGINT UNSIGNED, hourly_sentiment FLOAT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id))")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,7 +110,13 @@ func (d DBManager) addTicker(name string) int {
 	if err != nil {
 		log.Print("Error in AddTicker()", err)
 	}
-	return d.retrieveTicker(name)
+
+	if ret, e := d.retrieveTickerByName(name); e != nil {
+		log.Printf("Failed to add ticker")
+	} else {
+		return ret
+	}
+	return 0
 }
 
 func (d DBManager) addStatement(expression string, timeStamp int64, polarity uint8, url string) {
@@ -138,7 +145,7 @@ func (d DBManager) addStatement(expression string, timeStamp int64, polarity uin
 	}
 }*/
 
-func (d DBManager) retrieveTickers() {
+func (d DBManager) retrieveTickers() []string {
 	rows, err := d.db.Query("SELECT ticker_id, name FROM tickers")
 	if err != nil {
 		log.Fatal(err)
@@ -146,19 +153,22 @@ func (d DBManager) retrieveTickers() {
 	defer rows.Close()
 
 	var (
-		id   string
+		id   int
 		name string
 	)
+	ret := make([]string, 8)
 	for rows.Next() {
 		err := rows.Scan(&id, &name)
 		if err != nil {
 			log.Fatal(err)
 		}
+		ret[id] = name
 		log.Printf("%v: %s\n", id, name)
 	}
+	return ret
 }
 
-func (d DBManager) retrieveTicker(tickerName string) int {
+func (d DBManager) retrieveTickerByName(tickerName string) (int, error) {
 	rows, err := d.db.Query("SELECT ticker_id, name FROM tickers")
 	if err != nil {
 		log.Fatal(err)
@@ -175,13 +185,36 @@ func (d DBManager) retrieveTicker(tickerName string) int {
 		}
 		if name == tickerName {
 			id_number, _ := strconv.Atoi(id)
-			return id_number
+			return id_number, nil
 		}
 	}
-	return 0
+	return 0, errors.New("Ticker does not exist with that ID")
 }
 
-func (d DBManager) returnQuoteHistory(id int) {
+func (d DBManager) retrieveTickerById(tickerId int) (ticker, error) {
+	rows, err := d.db.Query("SELECT ticker_id, name FROM tickers")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	var (
+		id   string
+		name string
+	)
+	strId := strconv.Itoa(tickerId)
+	for rows.Next() {
+		err := rows.Scan(&id, &name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if strId == id {
+			return ticker{Name: name}, nil
+		}
+	}
+	return ticker{Name: "none"}, errors.New("Ticker does not exist")
+}
+
+func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
 	rows, err := d.db.Query(fmt.Sprintf("SELECT time_stamp, price FROM quotes WHERE ticker_id=%d ORDER BY time_stamp", id))
 	if err != nil {
 		log.Print("Error returning Quote History: ", err)
@@ -193,15 +226,19 @@ func (d DBManager) returnQuoteHistory(id int) {
 		if rows.Err() != nil {
 			log.Print("Found no rows.")
 		}
-		err := rows.Scan(&q.TimeStamp, &q.currentPrice)
+		err := rows.Scan(&q.TimeStamp, &q.CurrentPrice)
+		if q.TimeStamp < fromTime {
+			break
+		}
 		iq = append(iq, q)
 		if err != nil {
 			log.Print("Error in row scan")
 		}
 	}
+	return iq
 }
 
-func (d DBManager) returnSentimentHistory(id int) {
+func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuote {
 	rows, err := d.db.Query(fmt.Sprintf("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=%d ORDER BY time_stamp", id))
 	if err != nil {
 		log.Print("Error returning senitment history: ", err)
@@ -214,14 +251,18 @@ func (d DBManager) returnSentimentHistory(id int) {
 		if rows.Err() != nil {
 			log.Print("Found no rows.")
 		}
-		err := rows.Scan(&s.TimeStamp, &s.currentPrice)
+		err := rows.Scan(&s.TimeStamp, &s.CurrentPrice)
+		if s.TimeStamp < fromTime {
+			break
+		}
 		sh = append(sh, s)
 		if err != nil {
 			log.Print("Error in row scan")
 		}
 	}
 
-	for i, s := range sh {
+	/*for i, s := range sh {
 		fmt.Println(i, s)
-	}
+	}*/
+	return sh
 }

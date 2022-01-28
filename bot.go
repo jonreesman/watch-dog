@@ -24,7 +24,7 @@ func (b *bot) grabQuotes(d DBManager) { //const d *DBManager
 			if b.DEBUG {
 				fmt.Println(b.tickers[i].Name, ":", j)
 			}
-			d.addQuote(j.TimeStamp, b.tickers[i].id, j.currentPrice)
+			d.addQuote(j.TimeStamp, b.tickers[i].id, j.CurrentPrice)
 		}
 		time.Sleep(b.quoteInterval)
 	}
@@ -36,17 +36,21 @@ func (b bot) run() {
 	d.initializeManager()
 	d.dropTable("tickers")
 	d.dropTable("statements")
-	//d.dropTable("quotes")
+	d.dropTable("quotes")
 	d.dropTable("sentiments")
 	d.createTickerTable()
 	d.createStatementTable()
-	//d.createQuotesTable()
+	d.createQuotesTable()
 	d.createSentimentTable()
 	for i, stock := range b.tickers {
 		b.tickers[i].id = d.addTicker(stock.Name)
 		fmt.Println(stock)
 	}
 	d.retrieveTickers()
+
+	var s Server
+	go s.startServer(&d, &b.tickers)
+
 	go b.grabQuotes(d)
 	//Main business logic loop of Bot object.
 	for {

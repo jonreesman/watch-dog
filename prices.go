@@ -20,7 +20,7 @@ func FiveMinutePriceCheck(ticker string) intervalQuote {
 	iq.TimeStamp = iq.timeObj.Unix()
 	iq.TimeString = iq.timeObj.String()
 
-	iq.currentPrice = q.RegularMarketPrice
+	iq.CurrentPrice = q.RegularMarketPrice
 
 	return iq
 }
