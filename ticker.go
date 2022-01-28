@@ -92,9 +92,10 @@ func importTickers(d DBManager) []ticker {
 	return tickers
 }
 
-func addTicker(s string, d DBManager) (ticker, error) {
+func addTicker(stock string, d DBManager) (ticker, error) {
+	s := sanitize(stock)
 	if !CheckTickerExists(s) {
-		log.Println("Stock", s, "does not exist.")
+		log.Println("Stock does not exist.")
 
 		return ticker{Name: "none"}, errors.New("stock/crypto does not exist")
 	}
