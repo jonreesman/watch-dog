@@ -20,17 +20,22 @@ type ticker struct {
 	id              int
 }
 type statement struct {
-	Expression   string `json:"expression" dynamodbav:"expression" bson:"expression"`
-	Subject      string `json:"subject" dynamodbav:"subject" bson:"subject"`
-	Source       string `json:"source" dynamodbav:"source" bson:"source"`
-	TimeStamp    int64  `json:"timeStamp" dynamodbav:"timestamp" bson:"timestamp"`
-	TimeString   string `json:"timeString" dynamodbav:"timeString" bson:"timeString"`
-	Polarity     uint8  `json:"polarity" dynamodbav:"polarity" bson:"polarity"`
+	Expression   string `json:"expression"`
+	Subject      string `json:"subject"`
+	Source       string `json:"source"`
+	TimeStamp    int64  `json:"timeStamp"`
+	TimeString   string `json:"timeString"`
+	Polarity     uint8  `json:"polarity"`
 	timeStampObj time.Time
 	URLs         []string
 	PermanentURL string
 }
 
+/*	Conveniently, we can use the same object for
+ *	both sending quotes to the front end as
+ *	well as sending sentiments since they are identical
+ *	in variable types.
+ */
 type intervalQuote struct {
 	TimeStamp    int64
 	TimeString   string

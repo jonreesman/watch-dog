@@ -38,7 +38,7 @@ func (b bot) run() {
 	b.tickers = importTickers(d)
 
 	var s Server
-	go s.startServer(&d, &b.tickers)
+	go s.startServer(d, &b.tickers)
 
 	go b.grabQuotes(d)
 	sentimentModel, err := sentiment.Restore()

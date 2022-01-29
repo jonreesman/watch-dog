@@ -12,12 +12,12 @@ import (
 )
 
 type Server struct {
-	d      *DBManager
+	d      DBManager
 	t      *[]ticker
 	router *gin.Engine
 }
 
-func (s *Server) startServer(db *DBManager, ti *[]ticker) {
+func (s *Server) startServer(db DBManager, ti *[]ticker) {
 	port := os.Getenv("PORT")
 	s.d = db
 	s.t = ti
@@ -44,7 +44,7 @@ func (s *Server) startServer(db *DBManager, ti *[]ticker) {
 		api.DELETE("/tickers/:id", s.removeTicker)
 
 	}
-	//api.GET("/tickers", tickerHandler)
+
 	s.router.Run(":3100")
 }
 
@@ -58,7 +58,7 @@ func (s Server) newTicker(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	newTickerObject, err := addTicker(input.Name, *s.d)
+	newTickerObject, err := addTicker(input.Name, s.d)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
@@ -83,13 +83,6 @@ func (s Server) returnTickers(c *gin.Context) {
 	c.JSON(http.StatusOK, tickerPackage)
 }
 
-/*	24 hours 	24 * time.Hour
- *	1 week		168 * time.Hour
- *	1 month		730 * time.Hour
- *  3 months	2190 * time.Hour
- *	6 months	4380 * time.Hour
- *	1 year		8760 * time.Hour
- */
 func (s Server) returnTicker(c *gin.Context) {
 	var (
 		id       int
