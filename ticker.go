@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/cdipaolo/sentiment"
 )
 
 func (t *ticker) hourlyWipe() {
-	t.NumTweets = 0
+	t.numTweets = 0
 	t.Tweets = nil
+
 }
 
 func (t *ticker) computeHourlySentiment(sentimentModel sentiment.Models) {
@@ -22,7 +24,7 @@ func (t *ticker) computeHourlySentiment(sentimentModel sentiment.Models) {
 		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
 		total += float64(s.Polarity)
 	}
-	t.HourlySentiment = total / float64(t.NumTweets)
+	t.hourlySentiment = total / float64(t.numTweets)
 }
 
 func (t *ticker) singleComputeHourlySentiment() {
@@ -35,31 +37,39 @@ func (t *ticker) singleComputeHourlySentiment() {
 		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
 		total += float64(s.Polarity)
 	}
-	t.HourlySentiment = total / float64(t.NumTweets)
+
+	t.hourlySentiment = total / float64(t.numTweets)
+}
+
+func (tickers *tickerSlice) pushToDb(d DBManager) {
+	ts := *tickers
+	for i := range ts {
+		go func(t *ticker) {
+			t.pushToDb(d)
+			t.hourlyWipe()
+		}(&ts[i])
+	}
+	*tickers = ts
 }
 
 func (t ticker) pushToDb(d DBManager) {
+	var wg sync.WaitGroup
 	for _, tw := range t.Tweets {
 		fmt.Println("added statement to DB for:", tw.Subject)
-		//fmt.Println("source:", tw.Source)
-		//fmt.Println("Tweet length: ", len(tw.Expression))
-		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
+		wg.Add(1)
+		go d.addStatement(&wg, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
 	}
-	d.addSentiment(t.LastScrapeTime.Unix(), t.id, t.HourlySentiment)
+	wg.Add(1)
+	go d.addSentiment(&wg, t.lastScrapeTime.Unix(), t.Id, t.hourlySentiment)
+	wg.Wait()
 }
 
-func importTickers(d DBManager) []ticker {
-	var tickers []ticker
-	existingTickers := d.retrieveTickers()
-	for i, name := range existingTickers {
-		if name == "" {
-			continue
-		}
-		tickers = append(tickers, ticker{Name: name, id: i})
-		fmt.Printf("Added ticker %s with id %d", name, i)
-	}
-	if len(tickers) != 0 {
-		return tickers
+func (tickers *tickerSlice) importTickers(d DBManager) {
+	existingTickers := d.returnTickers()
+	ts := *tickers
+	if len(existingTickers) != 0 {
+		*tickers = existingTickers
+		return
 	}
 	file, err := os.Open("tickers.txt")
 	if err != nil {
@@ -69,59 +79,84 @@ func importTickers(d DBManager) []ticker {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		tick := ticker{Name: scanner.Text(), NumTweets: 0}
+		tick := ticker{Name: scanner.Text(), numTweets: 0}
 		if CheckTickerExists(tick.Name) {
-			tick.id, _ = d.addTicker(tick.Name)
-			tickers = append(tickers, tick)
+			tick.Id, _ = d.addTicker(tick.Name)
+			ts.appendTicker(tick)
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-	return tickers
+	*tickers = ts
 }
 
-func addTicker(stock string, d DBManager) (ticker, error) {
-	s := sanitize(stock)
+func (tickers *tickerSlice) addTicker(name string, d DBManager) (ticker, error) {
+	s := sanitize(name)
+	ts := *tickers
 	if !CheckTickerExists(s) {
 		log.Println("Stock does not exist.")
 
-		return ticker{Name: "none"}, errors.New("stock/crypto does not exist")
+		return ticker{Name: "", Id: 0}, errors.New("stock/crypto does not exist")
 	}
 	t := ticker{
 		Name: s,
 	}
 	var err error
-	t.id, err = d.addTicker(t.Name)
+	t.Id, err = d.addTicker(t.Name)
 	if err != nil {
-		return ticker{Name: "none"}, err
+		return ticker{Name: "", Id: 0}, err
 	}
-	t.scrape()
-	t.LastScrapeTime = time.Now()
-	t.singleComputeHourlySentiment()
+	t.singleScrape()
 	t.pushToDb(d)
+	ts.appendTicker(t)
+	*tickers = ts
 	return t, nil
 
 }
 
-func deleteTicker(t *[]ticker, id int) {
-	for i := range *t {
-		if (*t)[i].id == id {
-			(*t)[i] = (*t)[len(*t)-1]
-			(*t) = (*t)[:len(*t)-1]
+func (tickers *tickerSlice) appendTicker(t ticker) {
+	ts := *tickers
+	ts = append(ts, t)
+	*tickers = ts
+}
+
+func (tickers *tickerSlice) deleteTicker(id int) {
+	ts := *tickers
+	for i := range ts {
+		if ts[i].Id == id {
+			ts[i] = ts[len(ts)-1]
+			ts = ts[:len(ts)-1]
 			break
 		}
 	}
+	*tickers = ts
+
 }
 
-func scrapeAll(t *[]ticker) {
-	for i, tick := range *t {
-		(*t)[i].Tweets = append((*t)[i].Tweets, twitterScrape(tick)...)
-		(*t)[i].NumTweets = len((*t)[i].Tweets)
+func (tickers *tickerSlice) scrape(sentimentModel sentiment.Models) {
+	var wg sync.WaitGroup
+	ts := *tickers
+	for i := range ts {
+		wg.Add(1)
+		go ts[i].scrape(&wg, sentimentModel)
 	}
+	wg.Wait()
+	*tickers = ts
 }
 
-func (t *ticker) scrape() {
+func (t *ticker) scrape(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
+	defer wg.Done()
+
 	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
-	t.NumTweets = len(t.Tweets)
+	t.numTweets = len(t.Tweets)
+	t.lastScrapeTime = time.Now()
+	t.computeHourlySentiment(sentimentModel)
+}
+
+func (t *ticker) singleScrape() {
+	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
+	t.numTweets = len(t.Tweets)
+	t.lastScrapeTime = time.Now()
+	t.singleComputeHourlySentiment()
 }

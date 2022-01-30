@@ -6,28 +6,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type tickerSlice []ticker
+
 type bot struct {
-	tickers       []ticker
+	tickers       tickerSlice
 	mainInterval  time.Duration //defined in seconds
 	quoteInterval time.Duration
-	DEBUG         bool
 }
 
 type Server struct {
-	d      DBManager
-	t      *[]ticker
-	router *gin.Engine
+	d            DBManager
+	router       *gin.Engine
+	addTicker    chan string
+	deleteTicker chan int
 }
 
 //Defines an object packaged for pushing to a database.
 type ticker struct {
 	Name            string `json:"name"`
-	LastScrapeTime  time.Time
-	NumTweets       int
+	lastScrapeTime  time.Time
+	numTweets       int
 	Tweets          []statement `json:"tweets"`
-	HourlySentiment float64
-	Quotes          []intervalQuote
-	id              int
+	hourlySentiment float64
+	Id              int
 }
 type statement struct {
 	Expression   string `json:"expression"`

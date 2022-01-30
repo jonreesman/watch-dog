@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -111,7 +112,8 @@ func (d DBManager) addQuote(time_stamp int64, id int, price float64) {
 	}
 }
 
-func (d DBManager) addSentiment(time_stamp int64, id int, hourly_sentiment float64) {
+func (d DBManager) addSentiment(wg *sync.WaitGroup, time_stamp int64, id int, hourly_sentiment float64) {
+	defer wg.Done()
 	_, err := d.db.Exec("INSERT INTO sentiments(time_stamp, ticker_id, hourly_sentiment) VALUES (?, ?, ?)",
 		time_stamp,
 		id,
@@ -144,8 +146,8 @@ func (d DBManager) addTicker(name string) (int, error) {
 
 }
 
-func (d DBManager) addStatement(expression string, timeStamp int64, polarity uint8, url string) {
-
+func (d DBManager) addStatement(wg *sync.WaitGroup, expression string, timeStamp int64, polarity uint8, url string) {
+	defer wg.Done()
 	_, err := d.db.Exec("INSERT INTO statements(expression, time_stamp, polarity, url) VALUES (?, ?, ?, ?)",
 		expression,
 		timeStamp,
@@ -157,20 +159,7 @@ func (d DBManager) addStatement(expression string, timeStamp int64, polarity uin
 	}
 }
 
-/*func (d dbManager) addStatements(t ticker) {
-	dbQuery, err := d.db.Prepare("INSERT INTO statements(expression, time_stamp, polarity) VALUES (...)")
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, s := range t.Tweets {
-		_, err := dbQuery.Query(s.Expression, s.TimeStamp, s.Polarity)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}*/
-
-func (d DBManager) retrieveTickers() []string {
+func (d DBManager) returnTickers() (tickers tickerSlice) {
 	rows, err := d.db.Query("SELECT ticker_id, name FROM tickers ORDER BY ticker_id")
 	if err != nil {
 		log.Fatal(err)
@@ -181,22 +170,16 @@ func (d DBManager) retrieveTickers() []string {
 		id   int
 		name string
 	)
-	MAX_SIZE := 100
-	ret := make([]string, MAX_SIZE)
-	ret[0] = ""
+
 	for rows.Next() {
 		err := rows.Scan(&id, &name)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if id > MAX_SIZE {
-			log.Print("Too many stocks.")
-			continue
-		}
-		ret[id] = name
+		tickers.appendTicker(ticker{Name: name, Id: id})
 		log.Printf("%v: %s\n", id, name)
 	}
-	return ret
+	return tickers
 }
 
 func (d DBManager) retrieveTickerByName(tickerName string) (int, error) {
@@ -212,7 +195,7 @@ func (d DBManager) retrieveTickerByName(tickerName string) (int, error) {
 	for rows.Next() {
 		err := rows.Scan(&id, &name)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 		if name == tickerName {
 			return id, nil
@@ -238,14 +221,14 @@ func (d DBManager) retrieveTickerById(tickerId int) (ticker, error) {
 			log.Fatal(err)
 		}
 		if strId == id {
-			return ticker{Name: name}, nil
+			return ticker{Name: name, Id: tickerId}, nil
 		}
 	}
 	return ticker{Name: "none"}, errors.New("ticker does not exist")
 }
 
 func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
-	rows, err := d.db.Query("SELECT time_stamp, price FROM quotes WHERE ticker_id=? ORDER BY time_stamp", id)
+	rows, err := d.db.Query("SELECT time_stamp, price FROM quotes WHERE ticker_id=? ORDER BY time_stamp DESC", id)
 	if err != nil {
 		log.Print("Error returning Quote History: ", err)
 	}
@@ -268,7 +251,7 @@ func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
 }
 
 func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuote {
-	rows, err := d.db.Query("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=? ORDER BY time_stamp", id)
+	rows, err := d.db.Query("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=? ORDER BY time_stamp DESC", id)
 	if err != nil {
 		log.Print("Error returning senitment history: ", err)
 	}

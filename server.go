@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) startServer(db DBManager, ti *[]ticker) {
-
+func (s *Server) startServer(db DBManager, addTicker chan string, deleteTicker chan int) {
+	s.addTicker = addTicker
+	s.deleteTicker = deleteTicker
 	s.d = db
-	s.t = ti
 
 	s.router = gin.Default()
 
@@ -28,10 +28,10 @@ func (s *Server) startServer(db DBManager, ti *[]ticker) {
 				"message": "pong",
 			})
 		})
-		api.GET("/tickers", s.returnTickers)
-		api.POST("/tickers/", s.newTicker)
-		api.GET("/tickers/:id/time/:interval", s.returnTicker)
-		api.DELETE("/tickers/:id", s.deleteTicker)
+		api.GET("/tickers", s.returnTickersHandler)
+		api.POST("/tickers/", s.newTickerHandler)
+		api.GET("/tickers/:id/time/:interval", s.returnTickerHandler)
+		api.DELETE("/tickers/:id", s.deleteTickerHandler)
 
 	}
 
@@ -42,36 +42,30 @@ func errorResponse(err error) gin.H {
 	return gin.H{"error": err.Error()}
 }
 
-func (s Server) newTicker(c *gin.Context) {
+func (s Server) newTickerHandler(c *gin.Context) {
 	var input ticker
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-	newTickerObject, err := addTicker(input.Name, s.d)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, errorResponse(err))
-		return
-	}
-	*s.t = append(*s.t, newTickerObject)
-	c.JSON(http.StatusOK, gin.H{"Id": newTickerObject.id, "Name": newTickerObject.Name})
+	s.addTicker <- input.Name
+	msg := <-s.addTicker
+
+	c.JSON(http.StatusOK, gin.H{"Id": msg, "Name": input.Name})
 
 }
 
-func (s Server) returnTickers(c *gin.Context) {
-	type tickerPayLoad struct {
-		Name string
-		Id   int
-	}
+func (s Server) returnTickersHandler(c *gin.Context) {
+	tickers := s.d.returnTickers()
 
-	var tickerPackage []tickerPayLoad
+	/*var tickerPackage []tickerPayLoad
 	for _, tick := range *s.t {
 		tickerPackage = append(tickerPackage, tickerPayLoad{Id: tick.id, Name: tick.Name})
-	}
-	c.JSON(http.StatusOK, tickerPackage)
+	}*/
+	c.JSON(http.StatusOK, tickers)
 }
 
-func (s Server) returnTicker(c *gin.Context) {
+func (s Server) returnTickerHandler(c *gin.Context) {
 	var (
 		id       int
 		interval string
@@ -118,7 +112,7 @@ func (s Server) returnTicker(c *gin.Context) {
 
 }
 
-func (s Server) deleteTicker(c *gin.Context) {
+func (s Server) deleteTickerHandler(c *gin.Context) {
 	var (
 		id  int
 		err error
@@ -127,11 +121,11 @@ func (s Server) deleteTicker(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id."})
 		return
 	}
-	err = s.d.deleteTicker(id)
-	deleteTicker(s.t, id)
-	if err != nil {
-		log.Print(err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	s.deleteTicker <- id
+	msg := <-s.deleteTicker
+	if msg == 400 {
+		log.Print("delete failed")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to delete ticker"})
 	} else {
 		c.JSON(http.StatusAccepted, gin.H{"error": "none"})
 	}

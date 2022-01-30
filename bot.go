@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -11,7 +9,6 @@ import (
 
 func initBot() bot {
 	var b bot
-	b.DEBUG, _ = strconv.ParseBool(os.Getenv("DEBUG"))
 	b.mainInterval = 3600 * time.Second
 	b.quoteInterval = 300 * time.Second
 	return b
@@ -21,13 +18,34 @@ func (b *bot) grabQuotes(d DBManager) { //const d *DBManager
 	for {
 		for i := range b.tickers {
 			j := FiveMinutePriceCheck(b.tickers[i].Name)
-			b.tickers[i].Quotes = append(b.tickers[i].Quotes, j)
-			if b.DEBUG {
-				fmt.Println(b.tickers[i].Name, ":", j, "id:", b.tickers[i].id)
-			}
-			d.addQuote(j.TimeStamp, b.tickers[i].id, j.CurrentPrice)
+			d.addQuote(j.TimeStamp, b.tickers[i].Id, j.CurrentPrice)
 		}
 		time.Sleep(b.quoteInterval)
+	}
+}
+
+func (b *bot) addTicker(d DBManager, addTicker chan string) {
+	for {
+		name := <-addTicker
+		t, err := b.tickers.addTicker(name, d)
+		if err != nil {
+			addTicker <- err.Error()
+		} else {
+			addTicker <- strconv.Itoa(t.Id)
+		}
+	}
+}
+
+func (b *bot) deleteTicker(d DBManager, deleteTicker chan int) {
+	for {
+		id := <-deleteTicker
+		b.tickers.deleteTicker(id)
+		err := d.deleteTicker(id)
+		if err != nil {
+			deleteTicker <- 400
+		} else {
+			deleteTicker <- 200
+		}
 	}
 }
 
@@ -35,32 +53,38 @@ func (b bot) run() {
 	//MySQL DB Set Up
 	var d DBManager
 	d.initializeManager()
-	b.tickers = importTickers(d)
 
+	//Import tickers from database
+	b.tickers.importTickers(d)
+
+	//Prepare channels for API to interface with
+	addTicker := make(chan string)
+	deleteTicker := make(chan int)
+
+	//Spin off goroutines to handle API CRUD operations
+	go b.addTicker(d, addTicker)
+	go b.deleteTicker(d, deleteTicker)
+
+	//Spin off server instance with add/deleteTicker channels
 	var s Server
-	go s.startServer(d, &b.tickers)
+	go s.startServer(d, addTicker, deleteTicker)
 
+	//Go routine for collecting market prices every five minutes.
 	go b.grabQuotes(d)
+
+	//Instantiate sentiment model
 	sentimentModel, err := sentiment.Restore()
+
+	//If it err'd, panic. No way to recover.
 	if err != nil {
 		panic(err)
 	}
 	//Main business logic loop of Bot object.
 	for {
-		if b.DEBUG {
-			fmt.Println("Loop")
-		}
-		scrapeAll(&b.tickers)
-		for i := range b.tickers {
-
-			b.tickers[i].LastScrapeTime = time.Now()
-			b.tickers[i].computeHourlySentiment(sentimentModel)
-			b.tickers[i].pushToDb(d)
-
-			//We do not keep the tweets cached hour to hour,
-			//so we wipe them since they are accesible in the database.
-			b.tickers[i].hourlyWipe()
-		}
+		//Scrapes all tickers concurrently.
+		b.tickers.scrape(sentimentModel)
+		//Once scraped, push all to database.
+		go b.tickers.pushToDb(d)
 		time.Sleep(b.mainInterval)
 	}
 }
