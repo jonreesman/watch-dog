@@ -29,7 +29,6 @@ func (d *DBManager) initializeManager() {
 	//d.URI = fmt.Sprintf("%s:%s@unix(/Users/jon/cloudsql/%s)/%s", d.dbUser, d.dbPwd, d.instanceConnection, d.dbName)
 	d.URI = fmt.Sprintf("%s:%s@tcp(%s)/%s", d.dbUser, d.dbPwd, "127.0.0.1:1433", d.dbName)
 	d.db, _ = sql.Open("mysql", d.URI)
-	//defer d.db.Close()
 
 	err := d.db.Ping()
 	if err != nil {
@@ -80,32 +79,32 @@ func (d DBManager) createTickerTable() {
 }
 
 func (d DBManager) createStatementTable() {
-	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS statements(statement_id SERIAL PRIMARY KEY, ticker_id BIGINT UNSIGNED, expression VARCHAR(500), url VARCHAR(255), time_stamp BIGINT, polarity TINYINT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id))")
+	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS statements(statement_id SERIAL PRIMARY KEY, ticker_id BIGINT UNSIGNED, expression VARCHAR(500), url VARCHAR(255), time_stamp BIGINT, polarity TINYINT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id) ON DELETE CASCADE)")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func (d DBManager) createSentimentTable() {
-	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS sentiments(sentiment_id SERIAL PRIMARY KEY, time_stamp BIGINT, ticker_id BIGINT UNSIGNED, hourly_sentiment FLOAT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id))")
+	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS sentiments(sentiment_id SERIAL PRIMARY KEY, time_stamp BIGINT, ticker_id BIGINT UNSIGNED, hourly_sentiment FLOAT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id) ON DELETE CASCADE)")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func (d DBManager) createQuotesTable() {
-	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS quotes(quote_id SERIAL PRIMARY KEY, time_stamp BIGINT, ticker_id BIGINT UNSIGNED, price DOUBLE, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id))")
+	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS quotes(quote_id SERIAL PRIMARY KEY, time_stamp BIGINT, ticker_id BIGINT UNSIGNED, price DOUBLE, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id) ON DELETE CASCADE)")
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func (d DBManager) addQuote(time_stamp int64, id int, price float64) {
-	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO quotes(time_stamp, ticker_id, price) VALUES ('%d', '%d', '%f')",
+	_, err := d.db.Exec("INSERT INTO quotes(time_stamp, ticker_id, price) VALUES (?, ?, ?)",
 		time_stamp,
 		id,
 		price,
-	))
+	)
 	if err != nil {
 		log.Print("Error in AddQuote ", err)
 		log.Print("id is ", id)
@@ -113,11 +112,11 @@ func (d DBManager) addQuote(time_stamp int64, id int, price float64) {
 }
 
 func (d DBManager) addSentiment(time_stamp int64, id int, hourly_sentiment float64) {
-	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO sentiments(time_stamp, ticker_id, hourly_sentiment) VALUES ('%d', '%d', '%f')",
+	_, err := d.db.Exec("INSERT INTO sentiments(time_stamp, ticker_id, hourly_sentiment) VALUES (?, ?, ?)",
 		time_stamp,
 		id,
 		float32(hourly_sentiment),
-	))
+	)
 	if err != nil {
 		log.Print("Error in addSentiment()", err, hourly_sentiment)
 		log.Print("id is ", id)
@@ -131,9 +130,6 @@ func (d DBManager) addTicker(name string) (int, error) {
 		return 0, errors.New("failed to add ticker")
 	}
 	_, err = dbQuery.Query(name)
-	/*_, err := d.db.Exec(fmt.Sprintf("INSERT INTO tickers(name) VALUES ('%s')",
-		name,
-	))*/
 	if err != nil {
 		log.Print("Error in AddTicker()", err)
 		return 0, errors.New("failed to add ticker")
@@ -150,12 +146,12 @@ func (d DBManager) addTicker(name string) (int, error) {
 
 func (d DBManager) addStatement(expression string, timeStamp int64, polarity uint8, url string) {
 
-	_, err := d.db.Exec(fmt.Sprintf("INSERT INTO statements(expression, time_stamp, polarity, url) VALUES (\"%s\", '%d', '%d', \"%s\")",
+	_, err := d.db.Exec("INSERT INTO statements(expression, time_stamp, polarity, url) VALUES (?, ?, ?, ?)",
 		expression,
 		timeStamp,
 		polarity,
 		url,
-	))
+	)
 	if err != nil {
 		log.Print("Error in addStatement", err)
 	}
@@ -249,7 +245,7 @@ func (d DBManager) retrieveTickerById(tickerId int) (ticker, error) {
 }
 
 func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
-	rows, err := d.db.Query(fmt.Sprintf("SELECT time_stamp, price FROM quotes WHERE ticker_id=%d ORDER BY time_stamp", id))
+	rows, err := d.db.Query("SELECT time_stamp, price FROM quotes WHERE ticker_id=? ORDER BY time_stamp", id)
 	if err != nil {
 		log.Print("Error returning Quote History: ", err)
 	}
@@ -272,7 +268,7 @@ func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
 }
 
 func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuote {
-	rows, err := d.db.Query(fmt.Sprintf("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=%d ORDER BY time_stamp", id))
+	rows, err := d.db.Query("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=? ORDER BY time_stamp", id)
 	if err != nil {
 		log.Print("Error returning senitment history: ", err)
 	}
@@ -297,18 +293,40 @@ func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuot
 }
 
 func (d DBManager) deleteTicker(id int) error {
-	_, err := d.db.Exec("SET FOREIGN_KEY_CHECKS = 0")
+	/*fmt.Println("ID", id, "scheduled for removal.")
+	tx, err := d.db.BeginTx(context.Background(), nil)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	defer tx.Rollback()
 
-	if _, err := d.db.Exec(fmt.Sprintf("DELETE FROM tickers WHERE ticker_id=%d", id)); err != nil {
+	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS = 0")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("DELETE FROM tickers WHERE ticker_id=?", id)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS = 1")
+	if err != nil {
 		return err
 	}
 
-	_, err = d.db.Exec("SET FOREIGN_KEY_CHECKS = 1")
-	if err != nil {
-		log.Fatal(err)
+	err = tx.Commit()
+	fmt.Println("Deleted")
+	*/
+
+	/*if _, err := d.db.Exec("SET FOREIGN_KEY_CHECKS = 0"); err != nil {
+		log.Print(err)
+	}*/
+
+	if _, err := d.db.Exec("DELETE FROM tickers WHERE ticker_id=?", id); err != nil {
+		return err
 	}
+
+	/*if _, err := d.db.Exec("SET FOREIGN_KEY_CHECKS = 1"); err != nil {
+		log.Print(err)
+	}*/
 	return nil
 }

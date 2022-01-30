@@ -1,12 +1,22 @@
 package main
 
-import "time"
+import (
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
 
 type bot struct {
 	tickers       []ticker
 	mainInterval  time.Duration //defined in seconds
 	quoteInterval time.Duration
 	DEBUG         bool
+}
+
+type Server struct {
+	d      DBManager
+	t      *[]ticker
+	router *gin.Engine
 }
 
 //Defines an object packaged for pushing to a database.

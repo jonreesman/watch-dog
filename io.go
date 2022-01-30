@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (t ticker) dump_raw() {
@@ -34,5 +36,16 @@ func (t ticker) dump_text() {
 		if _, err := p.WriteString(printedExpression + "\n"); err != nil {
 			log.Panicf("failed reading data from file: %s", err)
 		}
+	}
+}
+
+func (t ticker) printTicker() {
+	fmt.Println("Name: ", t.Name)
+	fmt.Println("Number of Tweets", t.NumTweets)
+	fmt.Println("Last Scrape", t.LastScrapeTime)
+	for _, tw := range t.Tweets {
+		fmt.Printf("\nTimestamp: %s - Tweet: %s\n", time.Unix(tw.TimeStamp, 0).String(), tw.Expression)
+		fmt.Println(tw.PermanentURL)
+		fmt.Println("Polarity: ", tw.Polarity)
 	}
 }

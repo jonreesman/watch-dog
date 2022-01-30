@@ -40,23 +40,12 @@ func (t *ticker) singleComputeHourlySentiment() {
 
 func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
-		//fmt.Println("added statement to DB for:", tw.Subject)
+		fmt.Println("added statement to DB for:", tw.Subject)
 		//fmt.Println("source:", tw.Source)
 		//fmt.Println("Tweet length: ", len(tw.Expression))
 		d.addStatement(tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
 	}
 	d.addSentiment(t.LastScrapeTime.Unix(), t.id, t.HourlySentiment)
-}
-
-func (t ticker) printTicker() {
-	fmt.Println("Name: ", t.Name)
-	fmt.Println("Number of Tweets", t.NumTweets)
-	fmt.Println("Last Scrape", t.LastScrapeTime)
-	for _, tw := range t.Tweets {
-		fmt.Printf("\nTimestamp: %s - Tweet: %s\n", time.Unix(tw.TimeStamp, 0).String(), tw.Expression)
-		fmt.Println(tw.PermanentURL)
-		fmt.Println("Polarity: ", tw.Polarity)
-	}
 }
 
 func importTickers(d DBManager) []ticker {
@@ -113,6 +102,16 @@ func addTicker(stock string, d DBManager) (ticker, error) {
 	t.pushToDb(d)
 	return t, nil
 
+}
+
+func deleteTicker(t *[]ticker, id int) {
+	for i := range *t {
+		if (*t)[i].id == id {
+			(*t)[i] = (*t)[len(*t)-1]
+			(*t) = (*t)[:len(*t)-1]
+			break
+		}
+	}
 }
 
 func scrapeAll(t *[]ticker) {

@@ -3,29 +3,19 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 	"strconv"
-
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-type Server struct {
-	d      DBManager
-	t      *[]ticker
-	router *gin.Engine
-}
-
 func (s *Server) startServer(db DBManager, ti *[]ticker) {
-	port := os.Getenv("PORT")
+
 	s.d = db
 	s.t = ti
-	if port == "" {
-		port = "3050"
-	}
+
 	s.router = gin.Default()
-	//s.router.Use(static.Serve("/", static.LocalFile("./views", true)))
+
 	api := s.router.Group("/api")
 	{
 		api.GET("/", func(c *gin.Context) {
@@ -41,7 +31,7 @@ func (s *Server) startServer(db DBManager, ti *[]ticker) {
 		api.GET("/tickers", s.returnTickers)
 		api.POST("/tickers/", s.newTicker)
 		api.GET("/tickers/:id/time/:interval", s.returnTicker)
-		api.DELETE("/tickers/:id", s.removeTicker)
+		api.DELETE("/tickers/:id", s.deleteTicker)
 
 	}
 
@@ -69,8 +59,6 @@ func (s Server) newTicker(c *gin.Context) {
 }
 
 func (s Server) returnTickers(c *gin.Context) {
-	//tickers := s.d.retrieveTickers()
-
 	type tickerPayLoad struct {
 		Name string
 		Id   int
@@ -130,7 +118,7 @@ func (s Server) returnTicker(c *gin.Context) {
 
 }
 
-func (s Server) removeTicker(c *gin.Context) {
+func (s Server) deleteTicker(c *gin.Context) {
 	var (
 		id  int
 		err error
@@ -140,10 +128,12 @@ func (s Server) removeTicker(c *gin.Context) {
 		return
 	}
 	err = s.d.deleteTicker(id)
+	deleteTicker(s.t, id)
 	if err != nil {
 		log.Print(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	} else {
 		c.JSON(http.StatusAccepted, gin.H{"error": "none"})
 	}
+
 }

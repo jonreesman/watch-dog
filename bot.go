@@ -52,9 +52,7 @@ func (b bot) run() {
 		}
 		scrapeAll(&b.tickers)
 		for i := range b.tickers {
-			if i == 0 {
-				continue
-			}
+
 			b.tickers[i].LastScrapeTime = time.Now()
 			b.tickers[i].computeHourlySentiment(sentimentModel)
 			b.tickers[i].pushToDb(d)
