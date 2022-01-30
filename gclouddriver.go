@@ -293,40 +293,8 @@ func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuot
 }
 
 func (d DBManager) deleteTicker(id int) error {
-	/*fmt.Println("ID", id, "scheduled for removal.")
-	tx, err := d.db.BeginTx(context.Background(), nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS = 0")
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec("DELETE FROM tickers WHERE ticker_id=?", id)
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec("SET FOREIGN_KEY_CHECKS = 1")
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	fmt.Println("Deleted")
-	*/
-
-	/*if _, err := d.db.Exec("SET FOREIGN_KEY_CHECKS = 0"); err != nil {
-		log.Print(err)
-	}*/
-
 	if _, err := d.db.Exec("DELETE FROM tickers WHERE ticker_id=?", id); err != nil {
 		return err
 	}
-
-	/*if _, err := d.db.Exec("SET FOREIGN_KEY_CHECKS = 1"); err != nil {
-		log.Print(err)
-	}*/
 	return nil
 }
