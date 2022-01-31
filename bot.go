@@ -39,13 +39,14 @@ func (b *bot) addTicker(d DBManager, addTicker chan string) {
 func (b *bot) deleteTicker(d DBManager, deleteTicker chan int) {
 	for {
 		id := <-deleteTicker
-		b.tickers.deleteTicker(id)
-		err := d.deleteTicker(id)
+		b.tickers.deleteTicker(id, d)
+		deleteTicker <- 200
+		/*err := d.deleteTicker(id)
 		if err != nil {
 			deleteTicker <- 400
 		} else {
 			deleteTicker <- 200
-		}
+		}*/
 	}
 }
 

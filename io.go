@@ -16,7 +16,7 @@ func (t ticker) dump_raw() {
 		log.Panicf("Error dumping %s\n", err)
 	}
 	directory := "json/"
-	filename := t.Name + "-" + strconv.FormatInt(t.lastScrapeTime.Unix(), 10)
+	filename := t.Name + "-" + strconv.FormatInt(t.LastScrapeTime.Unix(), 10)
 	err = os.WriteFile(directory+filename+".json", p, 0644)
 	if err != nil {
 		log.Panicf("failed reading data from file: %s", err)
@@ -41,7 +41,7 @@ func (t ticker) dump_text() {
 
 func (t ticker) printTicker() {
 	fmt.Println("Name: ", t.Name)
-	fmt.Println("Last Scrape", t.lastScrapeTime)
+	fmt.Println("Last Scrape", t.LastScrapeTime)
 	for _, tw := range t.Tweets {
 		fmt.Printf("\nTimestamp: %s - Tweet: %s\n", time.Unix(tw.TimeStamp, 0).String(), tw.Expression)
 		fmt.Println(tw.PermanentURL)

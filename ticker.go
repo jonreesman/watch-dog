@@ -60,7 +60,9 @@ func (t ticker) pushToDb(d DBManager) {
 		go d.addStatement(&wg, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
 	}
 	wg.Add(1)
-	go d.addSentiment(&wg, t.lastScrapeTime.Unix(), t.Id, t.hourlySentiment)
+	go d.addSentiment(&wg, t.LastScrapeTime.Unix(), t.Id, t.hourlySentiment)
+	wg.Add(1)
+	go d.updateTicker(&wg, t.Id, t.LastScrapeTime)
 	wg.Wait()
 }
 
@@ -81,6 +83,7 @@ func (tickers *tickerSlice) importTickers(d DBManager) {
 	for scanner.Scan() {
 		tick := ticker{Name: scanner.Text(), numTweets: 0}
 		if CheckTickerExists(tick.Name) {
+			fmt.Println("Exists")
 			tick.Id, _ = d.addTicker(tick.Name)
 			ts.appendTicker(tick)
 		}
@@ -99,14 +102,17 @@ func (tickers *tickerSlice) addTicker(name string, d DBManager) (ticker, error) 
 
 		return ticker{Name: "", Id: 0}, errors.New("stock/crypto does not exist")
 	}
+
 	t := ticker{
 		Name: s,
 	}
-	var err error
-	t.Id, err = d.addTicker(t.Name)
+
+	id, err := d.addTicker(s)
+	t.Id = id
 	if err != nil {
 		return ticker{Name: "", Id: 0}, err
 	}
+
 	t.singleScrape()
 	t.pushToDb(d)
 	ts.appendTicker(t)
@@ -121,8 +127,9 @@ func (tickers *tickerSlice) appendTicker(t ticker) {
 	*tickers = ts
 }
 
-func (tickers *tickerSlice) deleteTicker(id int) {
+func (tickers *tickerSlice) deleteTicker(id int, d DBManager) {
 	ts := *tickers
+	d.deleteTicker(id)
 	for i := range ts {
 		if ts[i].Id == id {
 			ts[i] = ts[len(ts)-1]
@@ -150,13 +157,14 @@ func (t *ticker) scrape(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
 
 	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
 	t.numTweets = len(t.Tweets)
-	t.lastScrapeTime = time.Now()
+	t.LastScrapeTime = time.Now()
 	t.computeHourlySentiment(sentimentModel)
+
 }
 
 func (t *ticker) singleScrape() {
 	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
 	t.numTweets = len(t.Tweets)
-	t.lastScrapeTime = time.Now()
+	t.LastScrapeTime = time.Now()
 	t.singleComputeHourlySentiment()
 }

@@ -24,7 +24,7 @@ type Server struct {
 //Defines an object packaged for pushing to a database.
 type ticker struct {
 	Name            string `json:"name"`
-	lastScrapeTime  time.Time
+	LastScrapeTime  time.Time
 	numTweets       int
 	Tweets          []statement `json:"tweets"`
 	hourlySentiment float64
