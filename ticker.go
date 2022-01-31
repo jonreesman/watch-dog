@@ -57,7 +57,7 @@ func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
 		fmt.Println("added statement to DB for:", tw.Subject)
 		wg.Add(1)
-		go d.addStatement(&wg, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
+		go d.addStatement(&wg, t.Id, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
 	}
 	wg.Add(1)
 	go d.addSentiment(&wg, t.LastScrapeTime.Unix(), t.Id, t.hourlySentiment)
@@ -104,7 +104,12 @@ func (tickers *tickerSlice) addTicker(name string, d DBManager) (ticker, error) 
 	}
 
 	t := ticker{
-		Name: s,
+		Name:            s,
+		LastScrapeTime:  time.Time{},
+		numTweets:       0,
+		Tweets:          []statement{},
+		hourlySentiment: 0,
+		Id:              0,
 	}
 
 	id, err := d.addTicker(s)

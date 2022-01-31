@@ -25,28 +25,25 @@ type DBManager struct {
 func (d *DBManager) initializeManager() {
 	d.dbUser = os.Getenv("DB_USER")
 	d.dbPwd = os.Getenv("DB_PWD")
-	d.instanceConnection = os.Getenv("INSTANCE_CONNECTION_NAME")
 	d.dbName = os.Getenv("DB_NAME")
 
-	//d.URI = fmt.Sprintf("%s:%s@unix(/Users/jon/cloudsql/%s)/%s", d.dbUser, d.dbPwd, d.instanceConnection, d.dbName)
-	d.URI = fmt.Sprintf("%s:%s@tcp(%s)/%s", d.dbUser, d.dbPwd, "127.0.0.1:1433", d.dbName)
+	d.URI = fmt.Sprintf("%s:%s@tcp(%s)/%s", d.dbUser, d.dbPwd, "127.0.0.1:3306", d.dbName)
 	d.db, _ = sql.Open("mysql", d.URI)
 
 	err := d.db.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("We got here...")
 	_, err = d.db.Exec(fmt.Sprintf("USE %s", d.dbName))
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Connection established")
 
-	//d.dropTable("tickers")
-	//d.dropTable("statements")
-	//d.dropTable("quotes")
-	//d.dropTable("sentiments")
+	d.dropTable("tickers")
+	d.dropTable("statements")
+	d.dropTable("quotes")
+	d.dropTable("sentiments")
 	d.createTickerTable()
 	d.createStatementTable()
 	d.createQuotesTable()
@@ -78,14 +75,6 @@ func (d DBManager) createTickerTable() {
 	if err != nil {
 		log.Print(err)
 	}
-	/*_, err = d.db.Exec("ALTER TABLE tickers ADD COLUMN active INT AFTER name")
-	if err != nil {
-		log.Print(err)
-	}
-	_, err = d.db.Exec("ALTER TABLE tickers ADD COLUMN last_scrape_time BIGINT AFTER active")
-	if err != nil {
-		log.Print(err)
-	}*/
 }
 
 func (d DBManager) createStatementTable() {
@@ -109,9 +98,9 @@ func (d DBManager) createQuotesTable() {
 	}
 }
 
-func (d DBManager) addQuote(time_stamp int64, id int, price float64) {
+func (d DBManager) addQuote(timeStamp int64, id int, price float64) {
 	_, err := d.db.Exec("INSERT INTO quotes(time_stamp, ticker_id, price) VALUES (?, ?, ?)",
-		time_stamp,
+		timeStamp,
 		id,
 		price,
 	)
@@ -121,16 +110,16 @@ func (d DBManager) addQuote(time_stamp int64, id int, price float64) {
 	}
 }
 
-func (d DBManager) addSentiment(wg *sync.WaitGroup, time_stamp int64, id int, hourly_sentiment float64) {
+func (d DBManager) addSentiment(wg *sync.WaitGroup, timeStamp int64, tickerId int, hourlySentiment float64) {
 	defer wg.Done()
 	_, err := d.db.Exec("INSERT INTO sentiments(time_stamp, ticker_id, hourly_sentiment) VALUES (?, ?, ?)",
-		time_stamp,
-		id,
-		float32(hourly_sentiment),
+		timeStamp,
+		tickerId,
+		float32(hourlySentiment),
 	)
 	if err != nil {
-		log.Print("Error in addSentiment()", err, hourly_sentiment)
-		log.Print("id is ", id)
+		log.Print("Error in addSentiment()", err, hourlySentiment)
+		log.Print("id is ", tickerId)
 	}
 }
 
@@ -170,9 +159,10 @@ func (d DBManager) addTicker(name string) (int, error) {
 
 }
 
-func (d DBManager) addStatement(wg *sync.WaitGroup, expression string, timeStamp int64, polarity uint8, url string) {
+func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity uint8, url string) {
 	defer wg.Done()
-	_, err := d.db.Exec("INSERT INTO statements(expression, time_stamp, polarity, url) VALUES (?, ?, ?, ?)",
+	_, err := d.db.Exec("INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url) VALUES (?, ?, ?, ?, ?)",
+		tickerId,
 		expression,
 		timeStamp,
 		polarity,
