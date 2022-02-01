@@ -18,15 +18,6 @@ func (t *ticker) hourlyWipe() {
 
 }
 
-func (t *ticker) computeHourlySentiment(sentimentModel sentiment.Models) {
-	var total float64
-	for _, s := range t.Tweets {
-		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
-		total += float64(s.Polarity)
-	}
-	t.hourlySentiment = total / float64(t.numTweets)
-}
-
 func (t *ticker) singleComputeHourlySentiment() {
 	sentimentModel, err := sentiment.Restore()
 	if err != nil {
@@ -67,7 +58,7 @@ func (t ticker) pushToDb(d DBManager) {
 }
 
 func (tickers *tickerSlice) importTickers(d DBManager) {
-	existingTickers := d.returnTickers()
+	existingTickers := d.returnActiveTickers()
 	ts := *tickers
 	if len(existingTickers) != 0 {
 		*tickers = existingTickers
@@ -132,7 +123,7 @@ func (tickers *tickerSlice) appendTicker(t ticker) {
 	*tickers = ts
 }
 
-func (tickers *tickerSlice) deleteTicker(id int, d DBManager) {
+/*func (tickers *tickerSlice) deleteTicker(id int, d DBManager) {
 	ts := *tickers
 	d.deleteTicker(id)
 	for i := range ts {
@@ -144,7 +135,7 @@ func (tickers *tickerSlice) deleteTicker(id int, d DBManager) {
 	}
 	*tickers = ts
 
-}
+}*/
 
 func (tickers *tickerSlice) scrape(sentimentModel sentiment.Models) {
 	var wg sync.WaitGroup
@@ -163,8 +154,8 @@ func (t *ticker) scrape(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
 	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
 	t.numTweets = len(t.Tweets)
 	t.LastScrapeTime = time.Now()
-	t.computeHourlySentiment(sentimentModel)
-
+	wg.Add(1)
+	t.computeHourlySentiment(wg, sentimentModel)
 }
 
 func (t *ticker) singleScrape() {
@@ -172,4 +163,14 @@ func (t *ticker) singleScrape() {
 	t.numTweets = len(t.Tweets)
 	t.LastScrapeTime = time.Now()
 	t.singleComputeHourlySentiment()
+}
+
+func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
+	defer wg.Done()
+	var total float64
+	for _, s := range t.Tweets {
+		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
+		total += float64(s.Polarity)
+	}
+	t.hourlySentiment = total / float64(t.numTweets)
 }

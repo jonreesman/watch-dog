@@ -29,6 +29,7 @@ type ticker struct {
 	Tweets          []statement `json:"tweets"`
 	hourlySentiment float64
 	Id              int
+	active          int
 }
 type statement struct {
 	Expression   string `json:"expression"`

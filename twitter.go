@@ -21,6 +21,9 @@ func twitterScrape(t ticker) []statement {
 		}
 		tweet.Text = sanitize(tweet.Text)
 		if strings.Contains(tweet.Text, t.Name) {
+			if tweet.Timestamp < t.LastScrapeTime.Unix() {
+				break
+			}
 			s := statement{
 				Expression:   tweet.Text,
 				Subject:      t.Name,

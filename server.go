@@ -31,7 +31,7 @@ func (s *Server) startServer(db DBManager, addTicker chan string, deleteTicker c
 		api.GET("/tickers", s.returnTickersHandler)
 		api.POST("/tickers/", s.newTickerHandler)
 		api.GET("/tickers/:id/time/:interval", s.returnTickerHandler)
-		api.DELETE("/tickers/:id", s.deleteTickerHandler)
+		api.DELETE("/tickers/:id", s.deactivateTickerHandler)
 
 	}
 
@@ -56,7 +56,7 @@ func (s Server) newTickerHandler(c *gin.Context) {
 }
 
 func (s Server) returnTickersHandler(c *gin.Context) {
-	tickers := s.d.returnTickers()
+	tickers := s.d.returnActiveTickers()
 
 	/*var tickerPackage []tickerPayLoad
 	for _, tick := range *s.t {
@@ -103,16 +103,18 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 
 	sentimentHistory := s.d.returnSentimentHistory(id, fromTime)
 	quoteHistory := s.d.returnQuoteHistory(id, fromTime)
+	statementHistory := s.d.returnAllStatements(id, fromTime)
 
 	c.JSON(http.StatusOK, gin.H{
 		"ticker":            tick,
 		"quote_history":     quoteHistory,
 		"sentiment_history": sentimentHistory,
+		"statement_history": statementHistory,
 	})
 
 }
 
-func (s Server) deleteTickerHandler(c *gin.Context) {
+func (s Server) deactivateTickerHandler(c *gin.Context) {
 	var (
 		id  int
 		err error
