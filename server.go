@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -57,11 +59,6 @@ func (s Server) newTickerHandler(c *gin.Context) {
 
 func (s Server) returnTickersHandler(c *gin.Context) {
 	tickers := s.d.returnActiveTickers()
-
-	/*var tickerPackage []tickerPayLoad
-	for _, tick := range *s.t {
-		tickerPackage = append(tickerPackage, tickerPayLoad{Id: tick.id, Name: tick.Name})
-	}*/
 	c.JSON(http.StatusOK, tickers)
 }
 
@@ -70,7 +67,9 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 		id       int
 		interval string
 		fromTime int64
-		hours    int
+		t        ticker
+		name     string
+		period   string
 		tick     ticker
 		err      error
 	)
@@ -78,23 +77,24 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id."})
 		return
 	}
+	t, err = s.d.retrieveTickerById(id)
+	if err != nil {
+		log.Print("Unable to retieve ticker")
+	}
+	name = t.Name
 
 	interval = c.Param("interval")
 	switch interval {
 	case "day":
-		hours = 24
+		period = "1d"
 	case "week":
-		hours = 168
+		period = "7d"
 	case "month":
-		hours = 730
-	case "3month":
-		hours = 2190
-	case "6month":
-		hours = 4380
-	case "year":
-		hours = 8760
+		period = "30d"
+	case "2month":
+		period = "60d"
 	}
-	fromTime = time.Now().Unix() - int64(hours)*3600
+	//fromTime = time.Now().Unix() - int64(period)*3600
 
 	if tick, err = s.d.retrieveTickerById(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve ticker"})
@@ -102,12 +102,21 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	}
 
 	sentimentHistory := s.d.returnSentimentHistory(id, fromTime)
-	quoteHistory := s.d.returnQuoteHistory(id, fromTime)
+	quoteHistory, err := http.Get(fmt.Sprintf("http://localhost:8000/ticker/%s/period/%s", name, period))
+	body, err := ioutil.ReadAll(quoteHistory.Body)
+	log.Print(err)
+
+	var result string
+	var jsonResult map[int64]interface{}
+	json.Unmarshal([]byte(body), &result)
+	json.Unmarshal([]byte(result), &jsonResult)
+
+	//quoteHistory := s.d.returnQuoteHistory(id, fromTime)
 	statementHistory := s.d.returnAllStatements(id, fromTime)
 
 	c.JSON(http.StatusOK, gin.H{
 		"ticker":            tick,
-		"quote_history":     quoteHistory,
+		"quote_history":     jsonResult,
 		"sentiment_history": sentimentHistory,
 		"statement_history": statementHistory,
 	})

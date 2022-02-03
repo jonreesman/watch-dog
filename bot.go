@@ -15,16 +15,6 @@ func (b *bot) initBot() {
 	b.quoteInterval = 300 * time.Second
 }
 
-func (b *bot) grabQuotes(d DBManager) { //const d *DBManager
-	for {
-		for i := range b.tickers {
-			j := FiveMinutePriceCheck(b.tickers[i].Name)
-			d.addQuote(j.TimeStamp, b.tickers[i].Id, j.CurrentPrice)
-		}
-		time.Sleep(b.quoteInterval)
-	}
-}
-
 func grabQuotes(d DBManager, quoteInterval time.Duration) { //const d *DBManager
 	for {
 		ts := d.returnAllTickers()
@@ -35,18 +25,6 @@ func grabQuotes(d DBManager, quoteInterval time.Duration) { //const d *DBManager
 		time.Sleep(quoteInterval)
 	}
 }
-
-/*func (b *bot) addTicker(d DBManager, addTicker chan string) {
-	for {
-		name := <-addTicker
-		t, err := b.tickers.addTicker(name, d)
-		if err != nil {
-			addTicker <- err.Error()
-		} else {
-			addTicker <- strconv.Itoa(t.Id)
-		}
-	}
-}*/
 
 func AddTicker(d DBManager, addTicker chan string, sentimentModel sentiment.Models) {
 	for {
@@ -95,18 +73,10 @@ func AddTicker(d DBManager, addTicker chan string, sentimentModel sentiment.Mode
 	}
 }
 
-/*func (b *bot) deleteTicker(d DBManager, deleteTicker chan int) {
-	for {
-		id := <-deleteTicker
-		b.tickers.deleteTicker(id, d)
-		deleteTicker <- 200
-	}
-}*/
-
 func DeactivateTicker(d DBManager, deleteTicker chan int) {
 	for {
 		id := <-deleteTicker
-		err := d.deleteTicker(id)
+		err := d.deactivateTicker(id)
 		if err != nil {
 			deleteTicker <- 400
 		}

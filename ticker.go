@@ -2,9 +2,12 @@ package main
 
 import (
 	"bufio"
-	"errors"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -16,20 +19,6 @@ func (t *ticker) hourlyWipe() {
 	t.numTweets = 0
 	t.Tweets = nil
 
-}
-
-func (t *ticker) singleComputeHourlySentiment() {
-	sentimentModel, err := sentiment.Restore()
-	if err != nil {
-		log.Print("Error loading sentiment analysis model")
-	}
-	var total float64
-	for _, s := range t.Tweets {
-		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
-		total += float64(s.Polarity)
-	}
-
-	t.hourlySentiment = total / float64(t.numTweets)
 }
 
 func (tickers *tickerSlice) pushToDb(d DBManager) {
@@ -85,57 +74,11 @@ func (tickers *tickerSlice) importTickers(d DBManager) {
 	*tickers = ts
 }
 
-func (tickers *tickerSlice) addTicker(name string, d DBManager) (ticker, error) {
-	s := sanitize(name)
-	ts := *tickers
-	if !CheckTickerExists(s) {
-		log.Println("Stock does not exist.")
-
-		return ticker{Name: "", Id: 0}, errors.New("stock/crypto does not exist")
-	}
-
-	t := ticker{
-		Name:            s,
-		LastScrapeTime:  time.Time{},
-		numTweets:       0,
-		Tweets:          []statement{},
-		hourlySentiment: 0,
-		Id:              0,
-	}
-
-	id, err := d.addTicker(s)
-	t.Id = id
-	if err != nil {
-		return ticker{Name: "", Id: 0}, err
-	}
-
-	t.singleScrape()
-	t.pushToDb(d)
-	ts.appendTicker(t)
-	*tickers = ts
-	return t, nil
-
-}
-
 func (tickers *tickerSlice) appendTicker(t ticker) {
 	ts := *tickers
 	ts = append(ts, t)
 	*tickers = ts
 }
-
-/*func (tickers *tickerSlice) deleteTicker(id int, d DBManager) {
-	ts := *tickers
-	d.deleteTicker(id)
-	for i := range ts {
-		if ts[i].Id == id {
-			ts[i] = ts[len(ts)-1]
-			ts = ts[:len(ts)-1]
-			break
-		}
-	}
-	*tickers = ts
-
-}*/
 
 func (tickers *tickerSlice) scrape(sentimentModel sentiment.Models) {
 	var wg sync.WaitGroup
@@ -158,6 +101,33 @@ func (t *ticker) scrape(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
 	t.computeHourlySentiment(wg, sentimentModel)
 }
 
+type pack struct {
+	Tweet string `json:"tweet"`
+}
+
+func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
+	defer wg.Done()
+	var total float64
+	var response float64
+	for _, s := range t.Tweets {
+		p := pack{Tweet: s.Expression}
+		js, _ := json.Marshal(p)
+		fmt.Println(p)
+		pythonSentiment, err := http.Post("http://localhost:8000/tweet", "application/json", bytes.NewBuffer(js))
+		resp, err := ioutil.ReadAll(pythonSentiment.Body)
+		if err != nil {
+			log.Print(err)
+		}
+		json.Unmarshal([]byte(resp), &response)
+		//s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
+		//fmt.Println("Python:", pythonSentiment.Body, " Go:", s.Polarity)
+
+		total += float64(response)
+	}
+	t.hourlySentiment = total / float64(t.numTweets)
+}
+
+//DEPRECATED
 func (t *ticker) singleScrape() {
 	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
 	t.numTweets = len(t.Tweets)
@@ -165,12 +135,17 @@ func (t *ticker) singleScrape() {
 	t.singleComputeHourlySentiment()
 }
 
-func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
-	defer wg.Done()
+//DEPRECATED
+func (t *ticker) singleComputeHourlySentiment() {
+	sentimentModel, err := sentiment.Restore()
+	if err != nil {
+		log.Print("Error loading sentiment analysis model")
+	}
 	var total float64
 	for _, s := range t.Tweets {
 		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
 		total += float64(s.Polarity)
 	}
+
 	t.hourlySentiment = total / float64(t.numTweets)
 }

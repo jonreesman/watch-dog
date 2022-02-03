@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,6 +20,15 @@ type Server struct {
 	router       *gin.Engine
 	addTicker    chan string
 	deleteTicker chan int
+}
+
+type DBManager struct {
+	db     *sql.DB
+	dbName string
+	dbUser string
+	dbPwd  string
+	//instanceConnection string
+	URI string
 }
 
 //Defines an object packaged for pushing to a database.
