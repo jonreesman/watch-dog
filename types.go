@@ -42,12 +42,12 @@ type ticker struct {
 	active          int
 }
 type statement struct {
-	Expression   string `json:"expression"`
-	Subject      string `json:"subject"`
-	Source       string `json:"source"`
-	TimeStamp    int64  `json:"timeStamp"`
-	TimeString   string `json:"timeString"`
-	Polarity     uint8  `json:"polarity"`
+	Expression   string  `json:"expression"`
+	Subject      string  `json:"subject"`
+	Source       string  `json:"source"`
+	TimeStamp    int64   `json:"timeStamp"`
+	TimeString   string  `json:"timeString"`
+	Polarity     float64 `json:"polarity"`
 	timeStampObj time.Time
 	URLs         []string
 	PermanentURL string

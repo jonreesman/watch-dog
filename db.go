@@ -31,10 +31,10 @@ func (d *DBManager) initializeManager() {
 	}
 	fmt.Println("Connection established")
 
-	//d.dropTable("tickers")
-	//d.dropTable("statements")
-	//d.dropTable("quotes")
-	//d.dropTable("sentiments")
+	d.dropTable("tickers")
+	d.dropTable("statements")
+	d.dropTable("quotes")
+	d.dropTable("sentiments")
 	d.createTickerTable()
 	d.createStatementTable()
 	d.createQuotesTable()
@@ -105,13 +105,13 @@ func (d DBManager) addTicker(name string) (int, error) {
 
 }
 
-func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity uint8, url string) {
+func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity float64, url string) {
 	defer wg.Done()
 	_, err := d.db.Exec("INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url) VALUES (?, ?, ?, ?, ?)",
 		tickerId,
 		expression,
 		timeStamp,
-		polarity,
+		float32(polarity),
 		url,
 	)
 	if err != nil {

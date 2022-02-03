@@ -109,18 +109,22 @@ func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel senti
 	defer wg.Done()
 	var total float64
 	var response float64
-	for _, s := range t.Tweets {
+	for i, s := range t.Tweets {
 		p := pack{Tweet: s.Expression}
 		js, _ := json.Marshal(p)
-		fmt.Println(p)
+		//fmt.Println(p)
 		pythonSentiment, err := http.Post("http://localhost:8000/tweet", "application/json", bytes.NewBuffer(js))
+		if err != nil {
+			log.Print(err)
+		}
 		resp, err := ioutil.ReadAll(pythonSentiment.Body)
 		if err != nil {
 			log.Print(err)
 		}
 		json.Unmarshal([]byte(resp), &response)
+		t.Tweets[i].Polarity = response
 		//s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
-		//fmt.Println("Python:", pythonSentiment.Body, " Go:", s.Polarity)
+		//fmt.Println("Python:", response, " Go:", s.Polarity, s.Expression)
 
 		total += float64(response)
 	}
@@ -128,7 +132,7 @@ func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel senti
 }
 
 //DEPRECATED
-func (t *ticker) singleScrape() {
+/*func (t *ticker) singleScrape() {
 	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
 	t.numTweets = len(t.Tweets)
 	t.LastScrapeTime = time.Now()
@@ -148,4 +152,4 @@ func (t *ticker) singleComputeHourlySentiment() {
 	}
 
 	t.hourlySentiment = total / float64(t.numTweets)
-}
+}*/
