@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/piquette/finance-go/quote"
 )
 
 //Intervals of 5 minutes?
-func FiveMinutePriceCheck(ticker string) intervalQuote {
+/*func FiveMinutePriceCheck(ticker string) intervalQuote {
 	q, err := quote.Get(ticker)
 	if err != nil {
 		log.Panic(err)
@@ -22,6 +21,14 @@ func FiveMinutePriceCheck(ticker string) intervalQuote {
 	iq.CurrentPrice = q.RegularMarketPrice
 
 	return iq
+}*/
+
+func priceCheck(ticker string) float64 {
+	q, err := quote.Get(ticker)
+	if err != nil {
+		log.Printf("Error getting quote")
+	}
+	return q.RegularMarketPrice
 }
 
 func CheckTickerExists(ticker string) bool {

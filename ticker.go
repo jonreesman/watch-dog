@@ -40,7 +40,7 @@ func (t ticker) pushToDb(d DBManager) {
 		go d.addStatement(&wg, t.Id, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
 	}
 	wg.Add(1)
-	go d.addSentiment(&wg, t.LastScrapeTime.Unix(), t.Id, t.hourlySentiment)
+	go d.addSentiment(&wg, t.LastScrapeTime.Unix(), t.Id, t.HourlySentiment)
 	wg.Add(1)
 	go d.updateTicker(&wg, t.Id, t.LastScrapeTime)
 	wg.Wait()
@@ -128,7 +128,7 @@ func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel senti
 
 		total += float64(response)
 	}
-	t.hourlySentiment = total / float64(t.numTweets)
+	t.HourlySentiment = total / float64(t.numTweets)
 }
 
 //DEPRECATED

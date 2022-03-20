@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"github.com/cdipaolo/sentiment"
 )
@@ -31,6 +30,5 @@ func run() {
 	go s.startServer(d, addTickerChannel, deactivateTickerChannel)
 	go AddTicker(d, addTickerChannel, sentimentModel)
 	go DeactivateTicker(d, deactivateTickerChannel)
-	go grabQuotes(d, 300*time.Second)
 	b.run(d, sentimentModel)
 }

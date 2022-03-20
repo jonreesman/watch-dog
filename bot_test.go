@@ -18,7 +18,7 @@ func Test_grabQuotes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			grabQuotes(tt.args.d, tt.args.quoteInterval)
+			//grabQuotes(tt.args.d, tt.args.quoteInterval)
 		})
 	}
 }

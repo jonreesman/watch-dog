@@ -1,12 +1,9 @@
-import string
-from unittest import result
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
-import json
 from textblob import TextBlob
 
-import pandas as pd
+#import pandas as pd
 import yfinance as yf
 
 
@@ -34,7 +31,6 @@ def market_history(ticker_name: str, period: str):
     data = data.drop(['High','Low','Close','Adj Close', 'Volume'], axis=1)
     print(data.columns)
     print(data)
-    #return data.to_json()
     result = data.to_json(orient="index")
     print(result)
     return result

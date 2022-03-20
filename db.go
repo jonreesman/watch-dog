@@ -33,11 +33,11 @@ func (d *DBManager) initializeManager() {
 
 	d.dropTable("tickers")
 	d.dropTable("statements")
-	d.dropTable("quotes")
+	//d.dropTable("quotes")
 	d.dropTable("sentiments")
 	d.createTickerTable()
 	d.createStatementTable()
-	d.createQuotesTable()
+	//d.createQuotesTable()
 	d.createSentimentTable()
 }
 
@@ -120,24 +120,44 @@ func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression str
 }
 
 func (d DBManager) returnActiveTickers() (tickers tickerSlice) {
-	rows, err := d.db.Query("SELECT ticker_id, name, last_scrape_time FROM tickers WHERE active=1 ORDER BY ticker_id")
+	//Change to do a union to return last sentiment
+
+	rows, err := d.db.Query("SELECT tickers.ticker_id, tickers.name, tickers.last_scrape_time, sentiments.hourly_sentiment FROM tickers LEFT JOIN sentiments ON tickers.ticker_id = sentiments.ticker_id WHERE active=1 ORDER BY ticker_id")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 
 	var (
-		id             int
-		name           string
-		lastScrapeTime sql.NullInt64
+		id                    int
+		name                  string
+		lastScrapeTimeHolder  sql.NullInt64
+		lastScrapeTime        int64
+		hourlySentimentHolder sql.NullFloat64
+		hourlySentiment       float64
 	)
 
 	for rows.Next() {
-		err := rows.Scan(&id, &name, &lastScrapeTime)
+		err := rows.Scan(&id, &name, &lastScrapeTimeHolder, &hourlySentimentHolder)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
-		tickers.appendTicker(ticker{Name: name, Id: id, LastScrapeTime: time.Unix(lastScrapeTime.Int64, 0)})
+		if lastScrapeTimeHolder.Valid {
+			lastScrapeTime = lastScrapeTimeHolder.Int64
+		} else {
+			lastScrapeTime = 0
+		}
+		if hourlySentimentHolder.Valid {
+			hourlySentiment = hourlySentimentHolder.Float64
+		} else {
+			hourlySentiment = 0
+		}
+		tickers.appendTicker(ticker{
+			Name:            name,
+			Id:              id,
+			LastScrapeTime:  time.Unix(lastScrapeTime, 0),
+			HourlySentiment: hourlySentiment,
+		})
 		log.Printf("%v: %s\n", id, name)
 	}
 	return tickers
@@ -146,7 +166,7 @@ func (d DBManager) returnActiveTickers() (tickers tickerSlice) {
 func (d DBManager) returnAllTickers() (tickers tickerSlice) {
 	rows, err := d.db.Query("SELECT ticker_id, name, last_scrape_time FROM tickers ORDER BY ticker_id")
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	defer rows.Close()
 
@@ -221,7 +241,7 @@ func (d DBManager) retrieveTickerById(tickerId int) (ticker, error) {
 	return ticker{Name: "none"}, errors.New("ticker does not exist")
 }
 
-func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
+/*func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
 	rows, err := d.db.Query("SELECT time_stamp, price FROM quotes WHERE ticker_id=? ORDER BY time_stamp DESC", id)
 	if err != nil {
 		log.Print("Error returning Quote History: ", err)
@@ -242,7 +262,7 @@ func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
 		}
 	}
 	return iq
-}
+}*/
 
 func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuote {
 	rows, err := d.db.Query("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=? ORDER BY time_stamp DESC", id)
@@ -250,7 +270,14 @@ func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuot
 		log.Print("Error returning senitment history: ", err)
 	}
 
-	var sh []intervalQuote
+	type item struct {
+		TimeStamp    int64
+		TimeString   string
+		timeObj      time.Time
+		CurrentPrice float64
+	}
+
+	var payload []intervalQuote
 	var s intervalQuote
 
 	for rows.Next() {
@@ -261,12 +288,12 @@ func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuot
 		if s.TimeStamp < fromTime {
 			break
 		}
-		sh = append(sh, s)
+		payload = append(payload, s)
 		if err != nil {
 			log.Print("Error in row scan")
 		}
 	}
-	return sh
+	return payload
 }
 
 func (d DBManager) returnAllStatements(id int, fromTime int64) []statement {

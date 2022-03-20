@@ -37,7 +37,7 @@ type ticker struct {
 	LastScrapeTime  time.Time
 	numTweets       int
 	Tweets          []statement `json:"tweets"`
-	hourlySentiment float64
+	HourlySentiment float64
 	Id              int
 	active          int
 }

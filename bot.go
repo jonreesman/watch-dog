@@ -15,7 +15,7 @@ func (b *bot) initBot() {
 	b.quoteInterval = 300 * time.Second
 }
 
-func grabQuotes(d DBManager, quoteInterval time.Duration) { //const d *DBManager
+/*func grabQuotes(d DBManager, quoteInterval time.Duration) { //const d *DBManager
 	for {
 		ts := d.returnAllTickers()
 		for i := range ts {
@@ -24,7 +24,7 @@ func grabQuotes(d DBManager, quoteInterval time.Duration) { //const d *DBManager
 		}
 		time.Sleep(quoteInterval)
 	}
-}
+}*/
 
 func AddTicker(d DBManager, addTicker chan string, sentimentModel sentiment.Models) {
 	for {
@@ -50,7 +50,7 @@ func AddTicker(d DBManager, addTicker chan string, sentimentModel sentiment.Mode
 				LastScrapeTime:  time.Time{},
 				numTweets:       0,
 				Tweets:          []statement{},
-				hourlySentiment: 0,
+				HourlySentiment: 0,
 				Id:              t.Id,
 				active:          1,
 			}
@@ -64,8 +64,8 @@ func AddTicker(d DBManager, addTicker chan string, sentimentModel sentiment.Mode
 		var wg sync.WaitGroup
 		wg.Add(1)
 		t.scrape(&wg, sentimentModel)
-		j := FiveMinutePriceCheck(t.Name)
-		d.addQuote(j.TimeStamp, t.Id, j.CurrentPrice)
+		//j := FiveMinutePriceCheck(t.Name)
+		//d.addQuote(j.TimeStamp, t.Id, j.CurrentPrice)
 		wg.Wait()
 		t.pushToDb(d)
 

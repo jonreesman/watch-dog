@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -59,7 +60,28 @@ func (s Server) newTickerHandler(c *gin.Context) {
 
 func (s Server) returnTickersHandler(c *gin.Context) {
 	tickers := s.d.returnActiveTickers()
-	c.JSON(http.StatusOK, tickers)
+	//Add current prices to tickers
+	type payloadItem struct {
+		Name            string
+		LastScrapeTime  time.Time
+		HourlySentiment float64
+		Id              int
+		Quote           float64
+	}
+	payload := make([]payloadItem, 0)
+
+	for _, tick := range tickers {
+		it := payloadItem{
+			Name:            tick.Name,
+			LastScrapeTime:  tick.LastScrapeTime,
+			HourlySentiment: tick.HourlySentiment,
+			Id:              tick.Id,
+			Quote:           priceCheck(tick.Name),
+		}
+		payload = append(payload, it)
+	}
+
+	c.JSON(http.StatusOK, payload)
 }
 
 func (s Server) returnTickerHandler(c *gin.Context) {
@@ -111,7 +133,6 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	json.Unmarshal([]byte(body), &result)
 	json.Unmarshal([]byte(result), &jsonResult)
 
-	//quoteHistory := s.d.returnQuoteHistory(id, fromTime)
 	statementHistory := s.d.returnAllStatements(id, fromTime)
 
 	c.JSON(http.StatusOK, gin.H{
