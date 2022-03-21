@@ -33,30 +33,20 @@ func (d *DBManager) initializeManager() error {
 
 	d.dropTable("tickers")
 	d.dropTable("statements")
-	//d.dropTable("quotes")
 	d.dropTable("sentiments")
 	d.createTickerTable()
 	d.createStatementTable()
-	//d.createQuotesTable()
 	d.createSentimentTable()
 	return nil
 }
 
-func (d DBManager) addQuote(timeStamp int64, id int, price float64) {
-	_, err := d.db.Exec("INSERT INTO quotes(time_stamp, ticker_id, price) VALUES (?, ?, ?)",
-		timeStamp,
-		id,
-		price,
-	)
-	if err != nil {
-		log.Print("Error in AddQuote ", err)
-		log.Print("id is ", id)
-	}
-}
+const addSentimentQuery = `
+INSERT INTO sentiments(time_stamp, ticker_id, hourly_sentiment) ` +
+	`VALUES (?, ?, ?)`
 
 func (d DBManager) addSentiment(wg *sync.WaitGroup, timeStamp int64, tickerId int, hourlySentiment float64) {
 	defer wg.Done()
-	_, err := d.db.Exec("INSERT INTO sentiments(time_stamp, ticker_id, hourly_sentiment) VALUES (?, ?, ?)",
+	_, err := d.db.Exec(addSentimentQuery,
 		timeStamp,
 		tickerId,
 		float32(hourlySentiment),
@@ -67,26 +57,37 @@ func (d DBManager) addSentiment(wg *sync.WaitGroup, timeStamp int64, tickerId in
 	}
 }
 
+const updateTickerQuery = `
+UPDATE tickers SET last_scrape_time=? ` +
+	`WHERE ticker_id=?`
+
 func (d DBManager) updateTicker(wg *sync.WaitGroup, id int, timeStamp time.Time) error {
 	defer wg.Done()
-	if _, err := d.db.Exec("UPDATE tickers SET last_scrape_time=? WHERE ticker_id=?", timeStamp.Unix(), id); err != nil {
+	if _, err := d.db.Exec(updateTickerQuery, timeStamp.Unix(), id); err != nil {
 		return err
 	}
 	return nil
 }
+
+const activateTickerQuery = `
+UPDATE tickers SET active=1 WHERE ticker_id=?`
+
+const addTickerQuery = `
+INSERT INTO tickers(name, active, last_scrape_time) ` +
+	`VALUES (?,?,?)`
 
 func (d DBManager) addTicker(name string) (int, error) {
 	if t, err := d.retrieveTickerByName(name); err == nil {
 		if t.active == 1 {
 			return t.Id, errors.New("ticker already exists and is active")
 		}
-		if _, err := d.db.Exec("UPDATE tickers SET active=1 WHERE ticker_id=?", t.Id); err != nil {
+		if _, err := d.db.Exec(activateTickerQuery, t.Id); err != nil {
 			return 0, err
 		}
 		return t.Id, nil
 	}
 
-	dbQuery, err := d.db.Prepare("INSERT INTO tickers(name, active, last_scrape_time) VALUES (?,?,?)")
+	dbQuery, err := d.db.Prepare(addTickerQuery)
 	if err != nil {
 		log.Print("Error in AddTicker()", err)
 		return 0, errors.New("failed to add ticker")
@@ -106,9 +107,13 @@ func (d DBManager) addTicker(name string) (int, error) {
 
 }
 
+const addStatementQuery = `
+INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url) ` +
+	`VALUES (?, ?, ?, ?, ?)`
+
 func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity float64, url string) {
 	defer wg.Done()
-	_, err := d.db.Exec("INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url) VALUES (?, ?, ?, ?, ?)",
+	_, err := d.db.Exec(addStatementQuery,
 		tickerId,
 		expression,
 		timeStamp,
@@ -120,10 +125,15 @@ func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression str
 	}
 }
 
-func (d DBManager) returnActiveTickers() (tickers tickerSlice) {
-	//Change to do a union to return last sentiment
+const activeTickerQuery = `
+SELECT tickers.ticker_id, tickers.name, tickers.last_scrape_time, ` +
+	`sentiments.hourly_sentiment FROM tickers LEFT JOIN sentiments ` +
+	`ON tickers.ticker_id = sentiments.ticker_id ` +
+	`AND tickers.last_scrape_time = sentiments.time_stamp ` +
+	`WHERE active=1 ORDER BY ticker_id`
 
-	rows, err := d.db.Query("SELECT tickers.ticker_id, tickers.name, tickers.last_scrape_time, sentiments.hourly_sentiment FROM tickers LEFT JOIN sentiments ON tickers.ticker_id = sentiments.ticker_id WHERE active=1 ORDER BY ticker_id")
+func (d DBManager) returnActiveTickers() (tickers tickerSlice) {
+	rows, err := d.db.Query(activeTickerQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -164,8 +174,12 @@ func (d DBManager) returnActiveTickers() (tickers tickerSlice) {
 	return tickers
 }
 
+const returnAllTickersQuery = `
+SELECT ticker_id, name, last_scrape_time ` +
+	`FROM tickers ORDER BY ticker_id`
+
 func (d DBManager) returnAllTickers() (tickers tickerSlice) {
-	rows, err := d.db.Query("SELECT ticker_id, name, last_scrape_time FROM tickers ORDER BY ticker_id")
+	rows, err := d.db.Query(returnAllTickersQuery)
 	if err != nil {
 		log.Print(err)
 	}
@@ -188,8 +202,12 @@ func (d DBManager) returnAllTickers() (tickers tickerSlice) {
 	return tickers
 }
 
+const retrieveTickerByNameQuery = `
+SELECT ticker_id, name, last_scrape_time, active FROM tickers ` +
+	`WHERE name=?`
+
 func (d DBManager) retrieveTickerByName(tickerName string) (ticker, error) {
-	rows, err := d.db.Query("SELECT ticker_id, name, last_scrape_time, active FROM tickers")
+	rows, err := d.db.Query(retrieveTickerByNameQuery, tickerName)
 	if err != nil {
 		log.Print(err)
 	}
@@ -218,8 +236,12 @@ func (d DBManager) retrieveTickerByName(tickerName string) (ticker, error) {
 	return ticker{Id: 0, Name: ""}, errors.New("ticker does not exist with that ID")
 }
 
+const retrieveTickerByIdQuery = `
+SELECT ticker_id, name, last_scrape_time FROM tickers ` +
+	`WHERE ticker_id=?`
+
 func (d DBManager) retrieveTickerById(tickerId int) (ticker, error) {
-	rows, err := d.db.Query("SELECT ticker_id, name, last_scrape_time FROM tickers")
+	rows, err := d.db.Query(retrieveTickerByIdQuery, tickerId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -242,8 +264,12 @@ func (d DBManager) retrieveTickerById(tickerId int) (ticker, error) {
 	return ticker{Name: "none"}, errors.New("ticker does not exist")
 }
 
+const returnSentimentHistoryQuery = `
+SELECT time_stamp, hourly_sentiment FROM sentiments ` +
+	`WHERE ticker_id=? ORDER BY time_stamp DESC`
+
 func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuote {
-	rows, err := d.db.Query("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=? ORDER BY time_stamp DESC", id)
+	rows, err := d.db.Query(returnSentimentHistoryQuery, id)
 	if err != nil {
 		log.Print("Error returning senitment history: ", err)
 	}
@@ -267,8 +293,13 @@ func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuot
 	return payload
 }
 
+const returnAllStatementsQuery = `
+SELECT time_stamp, expression, url, polarity ` +
+	`FROM statements WHERE ticker_id=? ` +
+	`ORDER BY time_stamp DESC`
+
 func (d DBManager) returnAllStatements(id int, fromTime int64) []statement {
-	rows, err := d.db.Query("SELECT time_stamp, expression, url, polarity FROM statements WHERE ticker_id=? ORDER BY time_stamp DESC", id)
+	rows, err := d.db.Query(returnAllStatementsQuery, id)
 	if err != nil {
 		log.Print("Error returning senitment history: ", err)
 	}
@@ -294,8 +325,11 @@ func (d DBManager) returnAllStatements(id int, fromTime int64) []statement {
 	return returnPackage
 }
 
+const deactivateTickerQuery = `
+UPDATE tickers SET active=0 WHERE ticker_id=?`
+
 func (d DBManager) deactivateTicker(id int) error {
-	if _, err := d.db.Exec("UPDATE tickers SET active=0 WHERE ticker_id=?", id); err != nil {
+	if _, err := d.db.Exec(deactivateTickerQuery, id); err != nil {
 		return err
 	}
 	return nil

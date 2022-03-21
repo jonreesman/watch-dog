@@ -1,10 +1,8 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"testing"
-
-	"github.com/cdipaolo/sentiment"
 )
 
 func TestScrape(t *testing.T) {
@@ -19,10 +17,7 @@ func TestScrape(t *testing.T) {
 	tickers[7].Name = "AMC"
 	tickers[8].Name = "GME"
 	tickers[9].Name = "UBER"
-	sentimentModel, err := sentiment.Restore()
-	if err != nil {
-		log.Print(err)
-	}
-	tickers.scrape(sentimentModel)
-	//fmt.Println(tickers)
+
+	tickers.scrape()
+	fmt.Println(tickers)
 }

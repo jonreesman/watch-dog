@@ -26,10 +26,10 @@ func twitterScrape(t ticker) []statement {
 			}
 			s := statement{
 				Expression:   tweet.Text,
-				Subject:      t.Name,
-				Source:       "Twitter",
+				subject:      t.Name,
+				source:       "Twitter",
 				TimeStamp:    tweet.Timestamp,
-				TimeString:   time.Unix(tweet.Timestamp, 0).String(),
+				timeString:   time.Unix(tweet.Timestamp, 0).String(),
 				timeStampObj: time.Unix(tweet.Timestamp, 0),
 				Polarity:     0,
 				URLs:         tweet.URLs,

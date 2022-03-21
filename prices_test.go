@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestFiveMinutePriceCheck(t *testing.T) {
+func TestPriceCheck(t *testing.T) {
 	fmt.Println("AAPL ", priceCheck("AAPL"))
 	fmt.Println("BTC-USD ", priceCheck("BTC-USD"))
 }

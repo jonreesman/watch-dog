@@ -46,10 +46,3 @@ func (d DBManager) createSentimentTable() {
 		log.Fatal(err)
 	}
 }
-
-func (d DBManager) createQuotesTable() {
-	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS quotes(quote_id SERIAL PRIMARY KEY, time_stamp BIGINT, ticker_id BIGINT UNSIGNED, price DOUBLE, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id) ON DELETE CASCADE)")
-	if err != nil {
-		log.Fatal(err)
-	}
-}

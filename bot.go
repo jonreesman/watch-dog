@@ -57,8 +57,6 @@ func AddTicker(d DBManager, addTicker chan string) {
 		var wg sync.WaitGroup
 		wg.Add(1)
 		t.scrape(&wg)
-		//j := FiveMinutePriceCheck(t.Name)
-		//d.addQuote(j.TimeStamp, t.Id, j.CurrentPrice)
 		wg.Wait()
 		t.pushToDb(d)
 

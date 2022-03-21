@@ -23,6 +23,7 @@ func run() {
 
 	if err := b.initBot(d); err != nil {
 		log.Printf("Failed to initialize bot: %v", err)
+		return
 	}
 	addTickerChannel := make(chan string)
 	deactivateTickerChannel := make(chan int)
