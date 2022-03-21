@@ -1,91 +1,92 @@
 package main
 
 import (
+	"errors"
+	"log"
 	"strconv"
+	"sync"
 	"time"
 
-	sentiment "github.com/cdipaolo/sentiment"
+	_ "github.com/jonreesman/watch-dog/pb"
 )
 
-func initBot() bot {
-	var b bot
+func (b *bot) initBot(d DBManager) error {
 	b.mainInterval = 3600 * time.Second
-	b.quoteInterval = 300 * time.Second
-	return b
-}
-
-func (b *bot) grabQuotes(d DBManager) { //const d *DBManager
-	for {
-		for i := range b.tickers {
-			j := FiveMinutePriceCheck(b.tickers[i].Name)
-			d.addQuote(j.TimeStamp, b.tickers[i].Id, j.CurrentPrice)
-		}
-		time.Sleep(b.quoteInterval)
+	if err := b.tickers.importTickers(d); err != nil {
+		log.Printf("initBot(): Failed to import tickers.")
+		return err
 	}
+	return nil
 }
 
-func (b *bot) addTicker(d DBManager, addTicker chan string) {
+func AddTicker(d DBManager, addTicker chan string) {
 	for {
 		name := <-addTicker
-		t, err := b.tickers.addTicker(name, d)
+		s := sanitize(name)
+		if !CheckTickerExists(s) {
+			log.Println("Stock does not exist.")
+
+			addTicker <- errors.New("stock/crypto does not exist").Error()
+		}
+		t, err := d.retrieveTickerByName(name)
+		if err == nil {
+			if t.active == 1 {
+				addTicker <- strconv.Itoa(t.Id)
+				continue
+			} else {
+				t.active = 1
+			}
+		}
 		if err != nil {
+			t = ticker{
+				Name:            s,
+				LastScrapeTime:  time.Time{},
+				numTweets:       0,
+				Tweets:          []statement{},
+				HourlySentiment: 0,
+				Id:              t.Id,
+				active:          1,
+			}
+		}
+
+		if id, err := d.addTicker(s); err != nil {
 			addTicker <- err.Error()
 		} else {
-			addTicker <- strconv.Itoa(t.Id)
+			t.Id = id
 		}
+		var wg sync.WaitGroup
+		wg.Add(1)
+		t.scrape(&wg)
+		//j := FiveMinutePriceCheck(t.Name)
+		//d.addQuote(j.TimeStamp, t.Id, j.CurrentPrice)
+		wg.Wait()
+		t.pushToDb(d)
+
+		addTicker <- strconv.Itoa(t.Id)
 	}
 }
 
-func (b *bot) deleteTicker(d DBManager, deleteTicker chan int) {
+func DeactivateTicker(d DBManager, deleteTicker chan int) {
 	for {
 		id := <-deleteTicker
-		b.tickers.deleteTicker(id, d)
-		deleteTicker <- 200
-		/*err := d.deleteTicker(id)
+		err := d.deactivateTicker(id)
 		if err != nil {
 			deleteTicker <- 400
-		} else {
-			deleteTicker <- 200
-		}*/
+		}
+		deleteTicker <- 200
 	}
 }
 
-func (b bot) run() {
-	//MySQL DB Set Up
-	var d DBManager
-	d.initializeManager()
+func (b bot) run(d DBManager) {
 
-	//Import tickers from database
-	b.tickers.importTickers(d)
-
-	//Prepare channels for API to interface with
-	addTicker := make(chan string)
-	deleteTicker := make(chan int)
-
-	//Spin off goroutines to handle API CRUD operations
-	go b.addTicker(d, addTicker)
-	go b.deleteTicker(d, deleteTicker)
-
-	//Spin off server instance with add/deleteTicker channels
-	var s Server
-	go s.startServer(d, addTicker, deleteTicker)
-
-	//Go routine for collecting market prices every five minutes.
-	go b.grabQuotes(d)
-
-	//Instantiate sentiment model
-	sentimentModel, err := sentiment.Restore()
-
-	//If it err'd, panic. No way to recover.
-	if err != nil {
-		panic(err)
-	}
 	//Main business logic loop of Bot object.
 	for {
 		//Scrapes all tickers concurrently.
-		b.tickers.scrape(sentimentModel)
+		b.tickers.scrape()
 		//Once scraped, push all to database.
 		go b.tickers.pushToDb(d)
 		time.Sleep(b.mainInterval)
+		b.tickers = nil
+		b.tickers.importTickers(d)
 	}
 }

@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/gin-gonic/gin"
+	"github.com/jonreesman/watch-dog/pb"
 )
 
 func (s *Server) startServer(db DBManager, addTicker chan string, deleteTicker chan int) {
@@ -31,7 +35,7 @@ func (s *Server) startServer(db DBManager, addTicker chan string, deleteTicker c
 		api.GET("/tickers", s.returnTickersHandler)
 		api.POST("/tickers/", s.newTickerHandler)
 		api.GET("/tickers/:id/time/:interval", s.returnTickerHandler)
-		api.DELETE("/tickers/:id", s.deleteTickerHandler)
+		api.DELETE("/tickers/:id", s.deactivateTickerHandler)
 
 	}
 
@@ -56,13 +60,29 @@ func (s Server) newTickerHandler(c *gin.Context) {
 }
 
 func (s Server) returnTickersHandler(c *gin.Context) {
-	tickers := s.d.returnTickers()
+	tickers := s.d.returnActiveTickers()
+	//Add current prices to tickers
+	type payloadItem struct {
+		Name            string
+		LastScrapeTime  time.Time
+		HourlySentiment float64
+		Id              int
+		Quote           float64
+	}
+	payload := make([]payloadItem, 0)
 
-	/*var tickerPackage []tickerPayLoad
-	for _, tick := range *s.t {
-		tickerPackage = append(tickerPackage, tickerPayLoad{Id: tick.id, Name: tick.Name})
-	}*/
-	c.JSON(http.StatusOK, tickers)
+	for _, tick := range tickers {
+		it := payloadItem{
+			Name:            tick.Name,
+			LastScrapeTime:  tick.LastScrapeTime,
+			HourlySentiment: tick.HourlySentiment,
+			Id:              tick.Id,
+			Quote:           priceCheck(tick.Name),
+		}
+		payload = append(payload, it)
+	}
+
+	c.JSON(http.StatusOK, payload)
 }
 
 func (s Server) returnTickerHandler(c *gin.Context) {
@@ -70,7 +90,9 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 		id       int
 		interval string
 		fromTime int64
-		hours    int
+		t        ticker
+		name     string
+		period   string
 		tick     ticker
 		err      error
 	)
@@ -78,23 +100,23 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id."})
 		return
 	}
+	t, err = s.d.retrieveTickerById(id)
+	if err != nil {
+		log.Print("Unable to retieve ticker")
+	}
+	name = t.Name
 
 	interval = c.Param("interval")
 	switch interval {
 	case "day":
-		hours = 24
+		period = "1d"
 	case "week":
-		hours = 168
+		period = "7d"
 	case "month":
-		hours = 730
-	case "3month":
-		hours = 2190
-	case "6month":
-		hours = 4380
-	case "year":
-		hours = 8760
+		period = "30d"
+	case "2month":
+		period = "60d"
 	}
-	fromTime = time.Now().Unix() - int64(hours)*3600
 
 	if tick, err = s.d.retrieveTickerById(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve ticker"})
@@ -102,17 +124,37 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	}
 
 	sentimentHistory := s.d.returnSentimentHistory(id, fromTime)
-	quoteHistory := s.d.returnQuoteHistory(id, fromTime)
+	addr := "localhost:9999"
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Printf("returnTickerHandler(): GRPC Dial Error %v", err)
+		errorResponse(err)
+		//POST ERROR
+		return
+	}
+	defer conn.Close()
+	client := pb.NewQuotesClient(conn)
+	request := pb.QuoteRequest{
+		Name:   name,
+		Period: period,
+	}
+	response, err := client.Detect(context.Background(), &request)
+	if err != nil {
+		log.Printf("returnTickerHandler(): GRPC Detect Error: %v", err)
+	}
+
+	statementHistory := s.d.returnAllStatements(id, fromTime)
 
 	c.JSON(http.StatusOK, gin.H{
 		"ticker":            tick,
-		"quote_history":     quoteHistory,
+		"quote_history":     response,
 		"sentiment_history": sentimentHistory,
+		"statement_history": statementHistory,
 	})
 
 }
 
-func (s Server) deleteTickerHandler(c *gin.Context) {
+func (s Server) deactivateTickerHandler(c *gin.Context) {
 	var (
 		id  int
 		err error

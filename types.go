@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -9,9 +10,8 @@ import (
 type tickerSlice []ticker
 
 type bot struct {
-	tickers       tickerSlice
-	mainInterval  time.Duration //defined in seconds
-	quoteInterval time.Duration
+	tickers      tickerSlice
+	mainInterval time.Duration //defined in seconds
 }
 
 type Server struct {
@@ -21,22 +21,31 @@ type Server struct {
 	deleteTicker chan int
 }
 
+type DBManager struct {
+	db     *sql.DB
+	dbName string
+	dbUser string
+	dbPwd  string
+	URI    string
+}
+
 //Defines an object packaged for pushing to a database.
 type ticker struct {
 	Name            string `json:"name"`
 	LastScrapeTime  time.Time
 	numTweets       int
 	Tweets          []statement `json:"tweets"`
-	hourlySentiment float64
+	HourlySentiment float64
 	Id              int
+	active          int
 }
 type statement struct {
-	Expression   string `json:"expression"`
-	Subject      string `json:"subject"`
-	Source       string `json:"source"`
-	TimeStamp    int64  `json:"timeStamp"`
-	TimeString   string `json:"timeString"`
-	Polarity     uint8  `json:"polarity"`
+	Expression   string  `json:"expression"`
+	Subject      string  `json:"subject"`
+	Source       string  `json:"source"`
+	TimeStamp    int64   `json:"timeStamp"`
+	TimeString   string  `json:"timeString"`
+	Polarity     float64 `json:"polarity"`
 	timeStampObj time.Time
 	URLs         []string
 	PermanentURL string
