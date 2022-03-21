@@ -7,26 +7,19 @@ import (
 	"sync"
 	"time"
 
-	sentiment "github.com/cdipaolo/sentiment"
+	_ "github.com/jonreesman/watch-dog/pb"
 )
 
-func (b *bot) initBot() {
+func (b *bot) initBot(d DBManager) error {
 	b.mainInterval = 3600 * time.Second
-	b.quoteInterval = 300 * time.Second
+	if err := b.tickers.importTickers(d); err != nil {
+		log.Printf("initBot(): Failed to import tickers.")
+		return err
+	}
+	return nil
 }
 
-/*func grabQuotes(d DBManager, quoteInterval time.Duration) { //const d *DBManager
-	for {
-		ts := d.returnAllTickers()
-		for i := range ts {
-			j := FiveMinutePriceCheck(ts[i].Name)
-			d.addQuote(j.TimeStamp, ts[i].Id, j.CurrentPrice)
-		}
-		time.Sleep(quoteInterval)
-	}
-}*/
-
-func AddTicker(d DBManager, addTicker chan string, sentimentModel sentiment.Models) {
+func AddTicker(d DBManager, addTicker chan string) {
 	for {
 		name := <-addTicker
 		s := sanitize(name)
@@ -63,7 +56,7 @@ func AddTicker(d DBManager, addTicker chan string, sentimentModel sentiment.Mode
 		}
 		var wg sync.WaitGroup
 		wg.Add(1)
-		t.scrape(&wg, sentimentModel)
+		t.scrape(&wg)
 		//j := FiveMinutePriceCheck(t.Name)
 		//d.addQuote(j.TimeStamp, t.Id, j.CurrentPrice)
 		wg.Wait()
@@ -84,12 +77,12 @@ func DeactivateTicker(d DBManager, deleteTicker chan int) {
 	}
 }
 
-func (b bot) run(d DBManager, sentimentModel sentiment.Models) {
+func (b bot) run(d DBManager) {
 
 	//Main business logic loop of Bot object.
 	for {
 		//Scrapes all tickers concurrently.
-		b.tickers.scrape(sentimentModel)
+		b.tickers.scrape()
 		//Once scraped, push all to database.
 		go b.tickers.pushToDb(d)
 		time.Sleep(b.mainInterval)

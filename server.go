@@ -1,15 +1,16 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"context"
 	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/gin-gonic/gin"
+	"github.com/jonreesman/watch-dog/pb"
 )
 
 func (s *Server) startServer(db DBManager, addTicker chan string, deleteTicker chan int) {
@@ -116,7 +117,6 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	case "2month":
 		period = "60d"
 	}
-	//fromTime = time.Now().Unix() - int64(period)*3600
 
 	if tick, err = s.d.retrieveTickerById(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve ticker"})
@@ -124,20 +124,30 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	}
 
 	sentimentHistory := s.d.returnSentimentHistory(id, fromTime)
-	quoteHistory, err := http.Get(fmt.Sprintf("http://localhost:8000/ticker/%s/period/%s", name, period))
-	body, err := ioutil.ReadAll(quoteHistory.Body)
-	log.Print(err)
-
-	var result string
-	var jsonResult map[int64]interface{}
-	json.Unmarshal([]byte(body), &result)
-	json.Unmarshal([]byte(result), &jsonResult)
+	addr := "localhost:9999"
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Printf("returnTickerHandler(): GRPC Dial Error %v", err)
+		errorResponse(err)
+		//POST ERROR
+		return
+	}
+	defer conn.Close()
+	client := pb.NewQuotesClient(conn)
+	request := pb.QuoteRequest{
+		Name:   name,
+		Period: period,
+	}
+	response, err := client.Detect(context.Background(), &request)
+	if err != nil {
+		log.Printf("returnTickerHandler(): GRPC Detect Error: %v", err)
+	}
 
 	statementHistory := s.d.returnAllStatements(id, fromTime)
 
 	c.JSON(http.StatusOK, gin.H{
 		"ticker":            tick,
-		"quote_history":     jsonResult,
+		"quote_history":     response,
 		"sentiment_history": sentimentHistory,
 		"statement_history": statementHistory,
 	})

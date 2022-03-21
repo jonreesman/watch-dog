@@ -13,7 +13,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func (d *DBManager) initializeManager() {
+func (d *DBManager) initializeManager() error {
 	d.dbUser = os.Getenv("DB_USER")
 	d.dbPwd = os.Getenv("DB_PWD")
 	d.dbName = os.Getenv("DB_NAME")
@@ -23,11 +23,11 @@ func (d *DBManager) initializeManager() {
 
 	err := d.db.Ping()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	_, err = d.db.Exec(fmt.Sprintf("USE %s", d.dbName))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	fmt.Println("Connection established")
 
@@ -39,6 +39,7 @@ func (d *DBManager) initializeManager() {
 	d.createStatementTable()
 	//d.createQuotesTable()
 	d.createSentimentTable()
+	return nil
 }
 
 func (d DBManager) addQuote(timeStamp int64, id int, price float64) {
@@ -241,40 +242,10 @@ func (d DBManager) retrieveTickerById(tickerId int) (ticker, error) {
 	return ticker{Name: "none"}, errors.New("ticker does not exist")
 }
 
-/*func (d DBManager) returnQuoteHistory(id int, fromTime int64) []intervalQuote {
-	rows, err := d.db.Query("SELECT time_stamp, price FROM quotes WHERE ticker_id=? ORDER BY time_stamp DESC", id)
-	if err != nil {
-		log.Print("Error returning Quote History: ", err)
-	}
-	var iq []intervalQuote
-	var q intervalQuote
-	for rows.Next() {
-		if rows.Err() != nil {
-			log.Print("Found no rows.")
-		}
-		err := rows.Scan(&q.TimeStamp, &q.CurrentPrice)
-		if q.TimeStamp < fromTime {
-			break
-		}
-		iq = append(iq, q)
-		if err != nil {
-			log.Print("Error in row scan")
-		}
-	}
-	return iq
-}*/
-
 func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuote {
 	rows, err := d.db.Query("SELECT time_stamp, hourly_sentiment FROM sentiments WHERE ticker_id=? ORDER BY time_stamp DESC", id)
 	if err != nil {
 		log.Print("Error returning senitment history: ", err)
-	}
-
-	type item struct {
-		TimeStamp    int64
-		TimeString   string
-		timeObj      time.Time
-		CurrentPrice float64
 	}
 
 	var payload []intervalQuote

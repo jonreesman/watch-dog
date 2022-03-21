@@ -10,9 +10,8 @@ import (
 type tickerSlice []ticker
 
 type bot struct {
-	tickers       tickerSlice
-	mainInterval  time.Duration //defined in seconds
-	quoteInterval time.Duration
+	tickers      tickerSlice
+	mainInterval time.Duration //defined in seconds
 }
 
 type Server struct {
@@ -27,8 +26,7 @@ type DBManager struct {
 	dbName string
 	dbUser string
 	dbPwd  string
-	//instanceConnection string
-	URI string
+	URI    string
 }
 
 //Defines an object packaged for pushing to a database.

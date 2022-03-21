@@ -2,17 +2,19 @@ package main
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/json"
+	"context"
+	//"bytes"
+	//"encoding/json"
 	"fmt"
-	"io/ioutil"
+	//"io/ioutil"
 	"log"
-	"net/http"
+	//"net/http"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/cdipaolo/sentiment"
+	"github.com/jonreesman/watch-dog/pb"
+	"google.golang.org/grpc"
 )
 
 func (t *ticker) hourlyWipe() {
@@ -46,16 +48,17 @@ func (t ticker) pushToDb(d DBManager) {
 	wg.Wait()
 }
 
-func (tickers *tickerSlice) importTickers(d DBManager) {
+func (tickers *tickerSlice) importTickers(d DBManager) error {
 	existingTickers := d.returnActiveTickers()
 	ts := *tickers
 	if len(existingTickers) != 0 {
 		*tickers = existingTickers
-		return
+		return nil
 	}
 	file, err := os.Open("tickers.txt")
 	if err != nil {
-		log.Panicf("faild reading data from file: %s", err)
+		log.Panicf("importTickers(): failed reading data from file\n")
+		return err
 	}
 	defer file.Close()
 
@@ -69,9 +72,11 @@ func (tickers *tickerSlice) importTickers(d DBManager) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		log.Printf("ImportTickers(): Error in scanning file.")
+		return err
 	}
 	*tickers = ts
+	return nil
 }
 
 func (tickers *tickerSlice) appendTicker(t ticker) {
@@ -80,39 +85,46 @@ func (tickers *tickerSlice) appendTicker(t ticker) {
 	*tickers = ts
 }
 
-func (tickers *tickerSlice) scrape(sentimentModel sentiment.Models) {
+func (tickers *tickerSlice) scrape() {
 	var wg sync.WaitGroup
 	ts := *tickers
 	for i := range ts {
 		wg.Add(1)
-		go ts[i].scrape(&wg, sentimentModel)
+		go ts[i].scrape(&wg)
 	}
 	wg.Wait()
 	*tickers = ts
 }
 
-func (t *ticker) scrape(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
+func (t *ticker) scrape(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
 	t.numTweets = len(t.Tweets)
 	t.LastScrapeTime = time.Now()
 	wg.Add(1)
-	t.computeHourlySentiment(wg, sentimentModel)
+	t.computeHourlySentiment(wg)
 }
 
 type pack struct {
 	Tweet string `json:"tweet"`
 }
 
-func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel sentiment.Models) {
+func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup) {
 	defer wg.Done()
 	var total float64
-	var response float64
+	//var response float64
+	addr := "localhost:9999"
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Printf("computeHourlySentiment(): Failed to dial GRPC.")
+		return
+	}
+	defer conn.Close()
+	client := pb.NewSentimentClient(conn)
 	for i, s := range t.Tweets {
-		p := pack{Tweet: s.Expression}
+		/*p := pack{Tweet: s.Expression}
 		js, _ := json.Marshal(p)
-		//fmt.Println(p)
 		pythonSentiment, err := http.Post("http://localhost:8000/tweet", "application/json", bytes.NewBuffer(js))
 		if err != nil {
 			log.Print(err)
@@ -122,11 +134,17 @@ func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup, sentimentModel senti
 			log.Print(err)
 		}
 		json.Unmarshal([]byte(resp), &response)
-		t.Tweets[i].Polarity = response
-		//s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
-		//fmt.Println("Python:", response, " Go:", s.Polarity, s.Expression)
+		t.Tweets[i].Polarity = response*/
+		request := pb.SentimentRequest{
+			Tweet: s.Expression,
+		}
 
-		total += float64(response)
+		response, err := client.Detect(context.Background(), &request)
+		if err != nil {
+			log.Printf("GRPC SentimentRequest: %v", err)
+		}
+		t.Tweets[i].Polarity = float64(response.Polarity)
+		total += float64(response.Polarity)
 	}
 	t.HourlySentiment = total / float64(t.numTweets)
 }
