@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+
 	//"bytes"
 	//"encoding/json"
 	"fmt"
@@ -37,7 +38,7 @@ func (tickers *tickerSlice) pushToDb(d DBManager) {
 func (t ticker) pushToDb(d DBManager) {
 	var wg sync.WaitGroup
 	for _, tw := range t.Tweets {
-		fmt.Println("added statement to DB for:", tw.Subject)
+		fmt.Println("added statement to DB for:", tw.subject)
 		wg.Add(1)
 		go d.addStatement(&wg, t.Id, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
 	}
