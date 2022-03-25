@@ -44,11 +44,10 @@ type statement struct {
 	subject      string
 	source       string
 	TimeStamp    int64
-	timeString   string
 	Polarity     float64
-	timeStampObj time.Time
 	URLs         []string
 	PermanentURL string
+	ID           uint64
 }
 
 /*	Conveniently, we can use the same object for

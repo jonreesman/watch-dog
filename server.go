@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -48,10 +49,12 @@ func errorResponse(err error) gin.H {
 
 func (s Server) newTickerHandler(c *gin.Context) {
 	var input ticker
+	fmt.Println(c.Request.Body)
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+	fmt.Println(input.Name)
 	s.addTicker <- input.Name
 	msg := <-s.addTicker
 
@@ -129,7 +132,6 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	if err != nil {
 		log.Printf("returnTickerHandler(): GRPC Dial Error %v", err)
 		errorResponse(err)
-		//POST ERROR
 		return
 	}
 	defer conn.Close()
@@ -142,12 +144,16 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	if err != nil {
 		log.Printf("returnTickerHandler(): GRPC Detect Error: %v", err)
 	}
+	quoteHistory := make([]intervalQuote, 0)
+	for _, quote := range response.Quotes {
+		quoteHistory = append(quoteHistory, intervalQuote{TimeStamp: quote.Time.Seconds, CurrentPrice: float64(quote.Price)})
+	}
 
 	statementHistory := s.d.returnAllStatements(id, fromTime)
 
 	c.JSON(http.StatusOK, gin.H{
 		"ticker":            tick,
-		"quote_history":     response,
+		"quote_history":     quoteHistory,
 		"sentiment_history": sentimentHistory,
 		"statement_history": statementHistory,
 	})

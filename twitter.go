@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"log"
 	"regexp"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/forPelevin/gomoji"
 	twitterscraper "github.com/n0madic/twitter-scraper"
@@ -15,7 +16,7 @@ func twitterScrape(t ticker) []statement {
 	scraper.SetSearchMode(twitterscraper.SearchLatest)
 	scraper.WithReplies(false)
 	var tweets []statement
-	for tweet := range scraper.SearchTweets(context.Background(), t.Name+" within_time:1h", 50) {
+	for tweet := range scraper.SearchTweets(context.Background(), t.Name+" within_time:1h", 100) {
 		if tweet.Error != nil {
 			return tweets
 		}
@@ -24,16 +25,19 @@ func twitterScrape(t ticker) []statement {
 			if tweet.Timestamp < t.LastScrapeTime.Unix() {
 				break
 			}
+			id, err := strconv.ParseUint(tweet.ID, 10, 64)
+			if err != nil {
+				log.Printf("twitterScrape(): Error extracting tweet id")
+			}
 			s := statement{
 				Expression:   tweet.Text,
 				subject:      t.Name,
 				source:       "Twitter",
 				TimeStamp:    tweet.Timestamp,
-				timeString:   time.Unix(tweet.Timestamp, 0).String(),
-				timeStampObj: time.Unix(tweet.Timestamp, 0),
 				Polarity:     0,
 				URLs:         tweet.URLs,
 				PermanentURL: tweet.PermanentURL,
+				ID:           id,
 			}
 			tweets = append(tweets, s)
 		}

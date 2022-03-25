@@ -30,7 +30,7 @@ func (d DBManager) createTickerTable() {
 }
 
 func (d DBManager) createStatementTable() {
-	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS statements(statement_id SERIAL PRIMARY KEY, ticker_id BIGINT UNSIGNED, expression VARCHAR(500), url VARCHAR(255), time_stamp BIGINT, polarity FLOAT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id) ON DELETE CASCADE)")
+	_, err := d.db.Exec("CREATE TABLE IF NOT EXISTS statements(tweet_id BIGINT UNSIGNED PRIMARY KEY, ticker_id BIGINT UNSIGNED, expression VARCHAR(500), url VARCHAR(255), time_stamp BIGINT, polarity FLOAT, FOREIGN KEY (ticker_id) REFERENCES tickers(ticker_id) ON DELETE CASCADE)")
 	if err != nil {
 		log.Fatal(err)
 	}

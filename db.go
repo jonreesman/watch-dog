@@ -108,10 +108,10 @@ func (d DBManager) addTicker(name string) (int, error) {
 }
 
 const addStatementQuery = `
-INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url) ` +
-	`VALUES (?, ?, ?, ?, ?)`
+INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url, tweet_id) ` +
+	`VALUES (?, ?, ?, ?, ?, ?)`
 
-func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity float64, url string) {
+func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity float64, url string, tweet_id uint64) {
 	defer wg.Done()
 	_, err := d.db.Exec(addStatementQuery,
 		tickerId,
@@ -119,6 +119,7 @@ func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression str
 		timeStamp,
 		float32(polarity),
 		url,
+		tweet_id,
 	)
 	if err != nil {
 		log.Print("Error in addStatement", err)
@@ -294,7 +295,7 @@ func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuot
 }
 
 const returnAllStatementsQuery = `
-SELECT time_stamp, expression, url, polarity ` +
+SELECT time_stamp, expression, url, polarity, tweet_id ` +
 	`FROM statements WHERE ticker_id=? ` +
 	`ORDER BY time_stamp DESC`
 
@@ -313,7 +314,7 @@ func (d DBManager) returnAllStatements(id int, fromTime int64) []statement {
 		if rows.Err() != nil {
 			log.Print("Found no rows.")
 		}
-		err := rows.Scan(&st.TimeStamp, &st.Expression, &st.PermanentURL, &st.Polarity)
+		err := rows.Scan(&st.TimeStamp, &st.Expression, &st.PermanentURL, &st.Polarity, &st.ID)
 		if st.TimeStamp < fromTime {
 			break
 		}

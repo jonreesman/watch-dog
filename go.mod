@@ -3,14 +3,12 @@ module github.com/jonreesman/watch-dog
 go 1.18
 
 require (
-	github.com/cdipaolo/sentiment v0.0.0-20200617002423-c697f64e7f10
 	github.com/gin-gonic/gin v1.7.7
 	google.golang.org/grpc v1.45.0
 	google.golang.org/protobuf v1.27.1
 )
 
 require (
-	github.com/cdipaolo/goml v0.0.0-20210723214924-bf439dd662aa // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
