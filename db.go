@@ -13,6 +13,14 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type DBManager struct {
+	db     *sql.DB
+	dbName string
+	dbUser string
+	dbPwd  string
+	URI    string
+}
+
 func (d *DBManager) initializeManager() error {
 	d.dbUser = os.Getenv("DB_USER")
 	d.dbPwd = os.Getenv("DB_PWD")

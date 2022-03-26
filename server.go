@@ -14,9 +14,14 @@ import (
 	"github.com/jonreesman/watch-dog/pb"
 )
 
-func (s *Server) startServer(db DBManager, addTicker chan string, deleteTicker chan int) {
-	s.addTicker = addTicker
-	s.deleteTicker = deleteTicker
+type Server struct {
+	d            DBManager
+	router       *gin.Engine
+	addTicker    chan string
+	deleteTicker chan int
+}
+
+func (s *Server) startServer(db DBManager) {
 	s.d = db
 
 	s.router = gin.Default()
@@ -55,10 +60,13 @@ func (s Server) newTickerHandler(c *gin.Context) {
 		return
 	}
 	fmt.Println(input.Name)
-	s.addTicker <- input.Name
-	msg := <-s.addTicker
+	id, err := AddTicker(s.d, input.Name)
+	if err != nil {
+		errorResponse(err)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"Id": msg, "Name": input.Name})
+	c.JSON(http.StatusOK, gin.H{"Id": id, "Name": input.Name})
 
 }
 
@@ -169,13 +177,12 @@ func (s Server) deactivateTickerHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id."})
 		return
 	}
-	s.deleteTicker <- id
-	msg := <-s.deleteTicker
-	if msg == 400 {
+	if err := DeactivateTicker(s.d, id); err != nil {
 		log.Print("delete failed")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to delete ticker"})
 	} else {
 		c.JSON(http.StatusAccepted, gin.H{"error": "none"})
+
 	}
 
 }

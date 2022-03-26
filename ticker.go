@@ -4,12 +4,8 @@ import (
 	"bufio"
 	"context"
 
-	//"bytes"
-	//"encoding/json"
 	"fmt"
-	//"io/ioutil"
 	"log"
-	//"net/http"
 	"os"
 	"sync"
 	"time"
@@ -17,6 +13,35 @@ import (
 	"github.com/jonreesman/watch-dog/pb"
 	"google.golang.org/grpc"
 )
+
+type tickerSlice []ticker
+
+//Defines an object packaged for pushing to a database.
+type ticker struct {
+	Name            string
+	LastScrapeTime  time.Time
+	numTweets       int
+	Tweets          []statement
+	HourlySentiment float64
+	Id              int
+	active          int
+}
+
+type statement struct {
+	Expression   string
+	subject      string
+	source       string
+	TimeStamp    int64
+	Polarity     float64
+	URLs         []string
+	PermanentURL string
+	ID           uint64
+}
+
+type intervalQuote struct {
+	TimeStamp    int64
+	CurrentPrice float64
+}
 
 func (t *ticker) hourlyWipe() {
 	t.numTweets = 0
