@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"log"
-	"strconv"
 	"sync"
 	"time"
 
@@ -31,13 +30,6 @@ func AddTicker(d DBManager, name string) (int, error) {
 		return 0, errors.New("stock/crypto does not exist")
 	}
 	t, err := d.retrieveTickerByName(name)
-	if err == nil {
-		if t.active == 1 {
-			return t.Id, nil
-		} else {
-			t.active = 1
-		}
-	}
 	if err != nil {
 		t = ticker{
 			Name:            s,
@@ -46,7 +38,13 @@ func AddTicker(d DBManager, name string) (int, error) {
 			Tweets:          []statement{},
 			HourlySentiment: 0,
 			Id:              t.Id,
-			active:          1,
+			Active:          1,
+		}
+	} else {
+		if t.Active == 1 {
+			return t.Id, nil
+		} else {
+			t.Active = 1
 		}
 	}
 
@@ -55,55 +53,14 @@ func AddTicker(d DBManager, name string) (int, error) {
 	} else {
 		t.Id = id
 	}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	t.scrape(&wg)
-	wg.Wait()
-	t.pushToDb(d)
-	return t.Id, nil
-}
-
-func AddTickerWithChannel(d DBManager, addTicker chan string) {
-	for {
-		name := <-addTicker
-		s := sanitize(name)
-		if !CheckTickerExists(s) {
-			log.Println("Stock does not exist.")
-			addTicker <- errors.New("stock/crypto does not exist").Error()
-		}
-		t, err := d.retrieveTickerByName(name)
-		if err == nil {
-			if t.active == 1 {
-				addTicker <- strconv.Itoa(t.Id)
-				continue
-			} else {
-				t.active = 1
-			}
-		}
-		if err != nil {
-			t = ticker{
-				Name:            s,
-				LastScrapeTime:  time.Time{},
-				numTweets:       0,
-				Tweets:          []statement{},
-				HourlySentiment: 0,
-				Id:              t.Id,
-				active:          1,
-			}
-		}
-
-		if id, err := d.addTicker(s); err != nil {
-			addTicker <- err.Error()
-		} else {
-			t.Id = id
-		}
+	go func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
 		t.scrape(&wg)
 		wg.Wait()
 		t.pushToDb(d)
-		addTicker <- strconv.Itoa(t.Id)
-	}
+	}()
+	return t.Id, nil
 }
 
 func DeactivateTicker(d DBManager, id int) error {

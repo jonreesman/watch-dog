@@ -86,7 +86,7 @@ INSERT INTO tickers(name, active, last_scrape_time) ` +
 
 func (d DBManager) addTicker(name string) (int, error) {
 	if t, err := d.retrieveTickerByName(name); err == nil {
-		if t.active == 1 {
+		if t.Active == 1 {
 			return t.Id, errors.New("ticker already exists and is active")
 		}
 		if _, err := d.db.Exec(activateTickerQuery, t.Id); err != nil {
@@ -237,7 +237,7 @@ func (d DBManager) retrieveTickerByName(tickerName string) (ticker, error) {
 				Id:             id,
 				Name:           name,
 				LastScrapeTime: time.Unix(lastScrapeTime.Int64, 0),
-				active:         active,
+				Active:         active,
 			}
 			return t, nil
 		}

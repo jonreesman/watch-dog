@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -19,5 +18,4 @@ func TestScrape(t *testing.T) {
 	tickers[9].Name = "UBER"
 
 	tickers.scrape()
-	fmt.Println(tickers)
 }

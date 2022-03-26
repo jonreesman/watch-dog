@@ -24,7 +24,7 @@ type ticker struct {
 	Tweets          []statement
 	HourlySentiment float64
 	Id              int
-	active          int
+	Active          int
 }
 
 type statement struct {
