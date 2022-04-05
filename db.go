@@ -39,9 +39,9 @@ func (d *DBManager) initializeManager() error {
 	}
 	fmt.Println("Connection established")
 
-	d.dropTable("tickers")
-	d.dropTable("statements")
-	d.dropTable("sentiments")
+	//d.dropTable("tickers")
+	//d.dropTable("statements")
+	//d.dropTable("sentiments")
 	d.createTickerTable()
 	d.createStatementTable()
 	d.createSentimentTable()
