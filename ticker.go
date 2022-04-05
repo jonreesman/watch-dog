@@ -4,12 +4,8 @@ import (
 	"bufio"
 	"context"
 
-	//"bytes"
-	//"encoding/json"
 	"fmt"
-	//"io/ioutil"
 	"log"
-	//"net/http"
 	"os"
 	"sync"
 	"time"
@@ -18,10 +14,43 @@ import (
 	"google.golang.org/grpc"
 )
 
+type tickerSlice []ticker
+
+//Defines a ticker object packaged for pushing to a database.
+type ticker struct {
+	Name            string
+	LastScrapeTime  time.Time
+	numTweets       int
+	Tweets          []statement
+	HourlySentiment float64
+	Id              int
+	Active          int
+}
+
+//Defines a statement object. Primarily refers to a tweet,
+//but it leaves room for the addition of other sources.
+type statement struct {
+	Expression   string
+	subject      string
+	source       string
+	TimeStamp    int64
+	Polarity     float64
+	URLs         []string
+	PermanentURL string
+	ID           uint64
+}
+
+//Defines a stock quote and the time that quote was taken.
+//Also is frequently used to sentiments over time since
+//the variable types are identical.
+type intervalQuote struct {
+	TimeStamp    int64
+	CurrentPrice float64
+}
+
 func (t *ticker) hourlyWipe() {
 	t.numTweets = 0
 	t.Tweets = nil
-
 }
 
 func (tickers *tickerSlice) pushToDb(d DBManager) {
@@ -40,7 +69,7 @@ func (t ticker) pushToDb(d DBManager) {
 	for _, tw := range t.Tweets {
 		fmt.Println("added statement to DB for:", tw.subject)
 		wg.Add(1)
-		go d.addStatement(&wg, t.Id, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL)
+		go d.addStatement(&wg, t.Id, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL, tw.ID)
 	}
 	wg.Add(1)
 	go d.addSentiment(&wg, t.LastScrapeTime.Unix(), t.Id, t.HourlySentiment)
@@ -105,6 +134,7 @@ func (t *ticker) scrape(wg *sync.WaitGroup) {
 	t.LastScrapeTime = time.Now()
 	wg.Add(1)
 	t.computeHourlySentiment(wg)
+	go t.dump_text()
 }
 
 type pack struct {
@@ -124,22 +154,9 @@ func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup) {
 	defer conn.Close()
 	client := pb.NewSentimentClient(conn)
 	for i, s := range t.Tweets {
-		/*p := pack{Tweet: s.Expression}
-		js, _ := json.Marshal(p)
-		pythonSentiment, err := http.Post("http://localhost:8000/tweet", "application/json", bytes.NewBuffer(js))
-		if err != nil {
-			log.Print(err)
-		}
-		resp, err := ioutil.ReadAll(pythonSentiment.Body)
-		if err != nil {
-			log.Print(err)
-		}
-		json.Unmarshal([]byte(resp), &response)
-		t.Tweets[i].Polarity = response*/
 		request := pb.SentimentRequest{
 			Tweet: s.Expression,
 		}
-
 		response, err := client.Detect(context.Background(), &request)
 		if err != nil {
 			log.Printf("GRPC SentimentRequest: %v", err)
@@ -149,26 +166,3 @@ func (t *ticker) computeHourlySentiment(wg *sync.WaitGroup) {
 	}
 	t.HourlySentiment = total / float64(t.numTweets)
 }
-
-//DEPRECATED
-/*func (t *ticker) singleScrape() {
-	t.Tweets = append(t.Tweets, twitterScrape(*t)...)
-	t.numTweets = len(t.Tweets)
-	t.LastScrapeTime = time.Now()
-	t.singleComputeHourlySentiment()
-}
-
-//DEPRECATED
-func (t *ticker) singleComputeHourlySentiment() {
-	sentimentModel, err := sentiment.Restore()
-	if err != nil {
-		log.Print("Error loading sentiment analysis model")
-	}
-	var total float64
-	for _, s := range t.Tweets {
-		s.Polarity = sentimentModel.SentimentAnalysis(s.Expression, sentiment.English).Score
-		total += float64(s.Polarity)
-	}
-
-	t.hourlySentiment = total / float64(t.numTweets)
-}*/

@@ -28,7 +28,7 @@ class SentimentServer(SentimentServicer):
 class QuotesServer(QuotesServicer):
     def Detect(self, request, context):
         logging.info('detect request size: %d', len(request.name))
-        data = yf.download(tickers=request.name, period=request.period, interval='5m')
+        data = yf.download(tickers=request.name, period=request.period, interval='1h')
         print(request.period)
         data = data.drop(['High','Low','Close','Adj Close', 'Volume'], axis=1)
         resp = QuoteResponse()

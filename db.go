@@ -13,6 +13,14 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type DBManager struct {
+	db     *sql.DB
+	dbName string
+	dbUser string
+	dbPwd  string
+	URI    string
+}
+
 func (d *DBManager) initializeManager() error {
 	d.dbUser = os.Getenv("DB_USER")
 	d.dbPwd = os.Getenv("DB_PWD")
@@ -31,9 +39,9 @@ func (d *DBManager) initializeManager() error {
 	}
 	fmt.Println("Connection established")
 
-	d.dropTable("tickers")
-	d.dropTable("statements")
-	d.dropTable("sentiments")
+	//d.dropTable("tickers")
+	//d.dropTable("statements")
+	//d.dropTable("sentiments")
 	d.createTickerTable()
 	d.createStatementTable()
 	d.createSentimentTable()
@@ -78,7 +86,7 @@ INSERT INTO tickers(name, active, last_scrape_time) ` +
 
 func (d DBManager) addTicker(name string) (int, error) {
 	if t, err := d.retrieveTickerByName(name); err == nil {
-		if t.active == 1 {
+		if t.Active == 1 {
 			return t.Id, errors.New("ticker already exists and is active")
 		}
 		if _, err := d.db.Exec(activateTickerQuery, t.Id); err != nil {
@@ -108,10 +116,10 @@ func (d DBManager) addTicker(name string) (int, error) {
 }
 
 const addStatementQuery = `
-INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url) ` +
-	`VALUES (?, ?, ?, ?, ?)`
+INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url, tweet_id) ` +
+	`VALUES (?, ?, ?, ?, ?, ?)`
 
-func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity float64, url string) {
+func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity float64, url string, tweet_id uint64) {
 	defer wg.Done()
 	_, err := d.db.Exec(addStatementQuery,
 		tickerId,
@@ -119,6 +127,7 @@ func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression str
 		timeStamp,
 		float32(polarity),
 		url,
+		tweet_id,
 	)
 	if err != nil {
 		log.Print("Error in addStatement", err)
@@ -228,7 +237,7 @@ func (d DBManager) retrieveTickerByName(tickerName string) (ticker, error) {
 				Id:             id,
 				Name:           name,
 				LastScrapeTime: time.Unix(lastScrapeTime.Int64, 0),
-				active:         active,
+				Active:         active,
 			}
 			return t, nil
 		}
@@ -294,7 +303,7 @@ func (d DBManager) returnSentimentHistory(id int, fromTime int64) []intervalQuot
 }
 
 const returnAllStatementsQuery = `
-SELECT time_stamp, expression, url, polarity ` +
+SELECT time_stamp, expression, url, polarity, tweet_id ` +
 	`FROM statements WHERE ticker_id=? ` +
 	`ORDER BY time_stamp DESC`
 
@@ -313,7 +322,7 @@ func (d DBManager) returnAllStatements(id int, fromTime int64) []statement {
 		if rows.Err() != nil {
 			log.Print("Found no rows.")
 		}
-		err := rows.Scan(&st.TimeStamp, &st.Expression, &st.PermanentURL, &st.Polarity)
+		err := rows.Scan(&st.TimeStamp, &st.Expression, &st.PermanentURL, &st.Polarity, &st.ID)
 		if st.TimeStamp < fromTime {
 			break
 		}
