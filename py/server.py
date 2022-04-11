@@ -29,7 +29,9 @@ class QuotesServer(QuotesServicer):
     def Detect(self, request, context):
         logging.info('detect request size: %d', len(request.name))
         data = yf.download(tickers=request.name, period=request.period, interval='1h')
-        print(request.period)
+        if (data.size == 0):
+            context.abort(grpc.StatusCode.INVALID_ARGUMENT, 'Ticker doesnt exist')
+        print(data.size)
         data = data.drop(['High','Low','Close','Adj Close', 'Volume'], axis=1)
         resp = QuoteResponse()
         for tuple in data.itertuples():
