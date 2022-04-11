@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -151,6 +152,8 @@ func (s Server) returnTickerHandler(c *gin.Context) {
 	response, err := client.Detect(context.Background(), &request)
 	if err != nil {
 		log.Printf("returnTickerHandler(): GRPC Detect Error: %v", err)
+		c.JSON(http.StatusBadRequest, errorResponse(errors.New("Ticker symbol could not be found. If crypto, please try with the relative currency (eg. BTC-USD).")))
+		return
 	}
 	quoteHistory := make([]intervalQuote, 0)
 	for _, quote := range response.Quotes {
