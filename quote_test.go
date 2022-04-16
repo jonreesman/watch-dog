@@ -7,7 +7,8 @@ import (
 
 func TestPriceCheck(t *testing.T) {
 	fmt.Println("AAPL ", priceCheck("AAPL"))
-	fmt.Println("BTC-USD ", priceCheck("BTC-USD"))
+	fmt.Println("BTC ", priceCheck("BTC"))
+
 }
 
 func TestCheckTickerExists(t *testing.T) {
