@@ -120,7 +120,7 @@ INSERT INTO statements(ticker_id, expression, time_stamp, polarity, url, tweet_i
 	`VALUES (?, ?, ?, ?, ?, ?)`
 
 func (d DBManager) addStatement(wg *sync.WaitGroup, tickerId int, expression string, timeStamp int64, polarity float64, url string, tweet_id uint64) {
-	defer wg.Done()
+	//defer wg.Done()
 	_, err := d.db.Exec(addStatementQuery,
 		tickerId,
 		expression,

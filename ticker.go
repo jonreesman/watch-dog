@@ -66,15 +66,14 @@ func (tickers *tickerSlice) pushToDb(d DBManager) {
 
 func (t ticker) pushToDb(d DBManager) {
 	var wg sync.WaitGroup
-	for _, tw := range t.Tweets {
-		fmt.Println("added statement to DB for:", tw.subject)
-		wg.Add(1)
-		go d.addStatement(&wg, t.Id, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL, tw.ID)
-	}
 	wg.Add(1)
 	go d.addSentiment(&wg, t.LastScrapeTime.Unix(), t.Id, t.HourlySentiment)
 	wg.Add(1)
 	go d.updateTicker(&wg, t.Id, t.LastScrapeTime)
+	for _, tw := range t.Tweets {
+		fmt.Println("added statement to DB for:", tw.subject)
+		d.addStatement(&wg, t.Id, tw.Expression, tw.TimeStamp, tw.Polarity, tw.PermanentURL, tw.ID)
+	}
 	wg.Wait()
 }
 
