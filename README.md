@@ -1,6 +1,9 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/jonreesman/watch-dog/badge)](https://www.codefactor.io/repository/github/jonreesman/watch-dog)
 # watch-dog
-The purpose of this project is to scrape twitter, reddit, and various news sources on an hourly basis in order to provide the user with a regular sentiment analysis for their chosen stock/crypto tickers. It's React Native frontend component can currently be found [here](https://github.com/jonreesman/watch-dog-react) which is where the lionshare of my attention presently is focused.
+The purpose of this project is to scrape twitter, reddit, and various news sources on an hourly basis in order to provide the user with a regular sentiment analysis for their chosen stock/crypto tickers. It's React Native frontend component can currently be found [here](https://github.com/jonreesman/watch-dog-react).
+
+## Kafka Version
+I am in the process of implementing this app utilizing Kafka to make it more horizontally scalable. This version can be found [here.](https://github.com/jonreesman/watch-dog-kafka)
 
 ## Front-end
 The entire app is capable of adding and removing stocks/crypto on the frontend, displaying the tweets it is currently using as datapoints, and a dual axes graph of the average hourly sentiment analysis overlayed with the price for the same time range. Presently, I have utilized React Native, but will likely shift in the future to try out different frameworks for my own edification.
